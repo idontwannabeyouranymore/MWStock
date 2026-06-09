@@ -7,8 +7,176 @@ datasource db {
   provider = "postgresql"
 }
 
-model TestConnection {
+enum RolUsuario {
+  ADMIN
+}
+
+enum EstadoColeccion {
+  ACTIVA
+  OCULTA
+  ARCHIVADA
+}
+
+enum EstadoProducto {
+  ACTIVO
+  AGOTADO
+  ARCHIVADO
+}
+
+enum EstadoVariante {
+  ACTIVA
+  AGOTADA
+  ARCHIVADA
+}
+
+enum TipoMovimientoInventario {
+  ENTRADA
+  SALIDA
+  AJUSTE
+  VENTA
+  APARTADO
+  DANADO
+}
+
+model Usuario {
   id        String   @id @default(cuid())
-  message   String
+  nombre    String
+  email     String   @unique
+  password  String?
+  rol       RolUsuario @default(ADMIN)
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tienda    Tienda?
+}
+
+model Tienda {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String?
+  logoUrl     String?
+  whatsapp    String?
+  instagram   String?
+  direccion   String?
+  slug        String   @unique
+
+  usuarioId   String   @unique
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+
+  colecciones Coleccion[]
+  productos   Producto[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Coleccion {
+  id          String           @id @default(cuid())
+  nombre      String
+  descripcion String?
+  imagenUrl   String?
+  estado      EstadoColeccion @default(ACTIVA)
+  orden       Int             @default(0)
+
+  tiendaId    String
+  tienda      Tienda          @relation(fields: [tiendaId], references: [id])
+
+  productos   ProductoColeccion[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tiendaId])
+}
+
+model Producto {
+  id           String         @id @default(cuid())
+  nombre       String
+  descripcion  String?
+  marca        String?
+  precio       Decimal        @db.Decimal(10, 2)
+  estado       EstadoProducto @default(ACTIVO)
+  destacado    Boolean        @default(false)
+  fechaIngreso DateTime       @default(now())
+
+  tiendaId     String
+  tienda       Tienda         @relation(fields: [tiendaId], references: [id])
+
+  imagenes     ProductoImagen[]
+  variantes    Variante[]
+  colecciones  ProductoColeccion[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tiendaId])
+  @@index([estado])
+}
+
+model ProductoImagen {
+  id         String   @id @default(cuid())
+  url        String
+  orden      Int      @default(0)
+
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+
+  createdAt  DateTime @default(now())
+
+  @@index([productoId])
+}
+
+model Variante {
+  id         String         @id @default(cuid())
+  talla      String
+  color      String?
+  stock      Int            @default(0)
+  sku        String?
+  estado     EstadoVariante @default(ACTIVA)
+
+  productoId String
+  producto   Producto       @relation(fields: [productoId], references: [id])
+
+  movimientos MovimientoInventario[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productoId])
+  @@index([estado])
+}
+
+model ProductoColeccion {
+  id          String    @id @default(cuid())
+
+  productoId  String
+  producto    Producto  @relation(fields: [productoId], references: [id])
+
+  coleccionId String
+  coleccion   Coleccion @relation(fields: [coleccionId], references: [id])
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([productoId, coleccionId])
+  @@index([productoId])
+  @@index([coleccionId])
+}
+
+model MovimientoInventario {
+  id            String                   @id @default(cuid())
+  tipo          TipoMovimientoInventario
+  cantidad      Int
+  stockAnterior Int
+  stockNuevo    Int
+  nota          String?
+
+  varianteId    String
+  variante      Variante                 @relation(fields: [varianteId], references: [id])
+
+  createdAt     DateTime @default(now())
+
+  @@index([varianteId])
+  @@index([tipo])
+  @@index([createdAt])
 }
