@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("admin@mwstock.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [cargando, setCargando] = useState(false);
 
   async function iniciarSesion(event: React.FormEvent<HTMLFormElement>) {
@@ -45,19 +45,21 @@ export default function LoginPage() {
         </p>
 
         <input
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="Correo"
-          className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
-        />
+  value={email}
+  onChange={(event) => setEmail(event.target.value)}
+  placeholder="Correo"
+  autoComplete="off"
+  className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
+/>
 
-        <input
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          type="password"
-          placeholder="Contraseña"
-          className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
-        />
+<input
+  value={password}
+  onChange={(event) => setPassword(event.target.value)}
+  type="password"
+  placeholder="Contraseña"
+  autoComplete="new-password"
+  className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
+/>
 
         <button
           disabled={cargando}
