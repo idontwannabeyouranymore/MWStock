@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
@@ -39,24 +42,30 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json();
 
+    const data: {
+      nombre?: string;
+      descripcion?: string | null;
+      marca?: string | null;
+      precio?: number;
+      estado?: "ACTIVO" | "AGOTADO" | "ARCHIVADO";
+      destacado?: boolean;
+    } = {};
+
+    if (body.nombre !== undefined) data.nombre = body.nombre;
+    if (body.descripcion !== undefined) data.descripcion = body.descripcion;
+    if (body.marca !== undefined) data.marca = body.marca;
+    if (body.precio !== undefined) data.precio = Number(body.precio);
+    if (body.estado !== undefined) data.estado = body.estado;
+    if (body.destacado !== undefined) data.destacado = body.destacado;
+
     const producto = await prisma.producto.update({
       where: { id },
-      data: {
-        nombre: body.nombre,
-        descripcion: body.descripcion,
-        marca: body.marca,
-        precio: body.precio,
-        estado: body.estado,
-        destacado: body.destacado,
-      },
+      data,
     });
 
     return NextResponse.json(producto);
@@ -70,10 +79,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
@@ -93,5 +99,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-  
 }
