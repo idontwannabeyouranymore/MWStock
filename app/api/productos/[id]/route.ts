@@ -2,101 +2,93 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+  const { id } = await context.params;
 
-    const producto = await prisma.producto.findUnique({
-      where: { id },
-      include: {
-        colecciones: {
-          include: {
-            coleccion: true,
-          },
-        },
-        imagenes: true,
-        variantes: true,
-      },
-    });
+  const producto = await prisma.producto.findUnique({
+    where: { id },
+    include: {
+      colecciones: { include: { coleccion: true } },
+      imagenes: true,
+      variantes: true,
+    },
+  });
 
-    if (!producto) {
-      return NextResponse.json(
-        { error: "Producto no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(producto);
-  } catch (error) {
-    console.error("GET /api/productos/[id]", error);
-
+  if (!producto) {
     return NextResponse.json(
-      { error: "Error al obtener producto" },
-      { status: 500 }
+      { error: "Producto no encontrado" },
+      { status: 404 }
     );
   }
+
+  return NextResponse.json(producto);
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  try {
-    const { id } = await context.params;
-    const body = await request.json();
+  const { id } = await context.params;
+  const body = await request.json();
 
-    const data: {
-      nombre?: string;
-      descripcion?: string | null;
-      marca?: string | null;
-      precio?: number;
-      estado?: "ACTIVO" | "AGOTADO" | "ARCHIVADO";
-      destacado?: boolean;
-    } = {};
+  const producto = await prisma.producto.update({
+    where: { id },
+    data: {
+      ...(body.nombre !== undefined && { nombre: body.nombre }),
+      ...(body.descripcion !== undefined && { descripcion: body.descripcion }),
+      ...(body.marca !== undefined && { marca: body.marca }),
+      ...(body.precio !== undefined && { precio: Number(body.precio) }),
+      ...(body.estado !== undefined && { estado: body.estado }),
+      ...(body.destacado !== undefined && { destacado: body.destacado }),
+    },
+  });
 
-    if (body.nombre !== undefined) data.nombre = body.nombre;
-    if (body.descripcion !== undefined) data.descripcion = body.descripcion;
-    if (body.marca !== undefined) data.marca = body.marca;
-    if (body.precio !== undefined) data.precio = Number(body.precio);
-    if (body.estado !== undefined) data.estado = body.estado;
-    if (body.destacado !== undefined) data.destacado = body.destacado;
-
-    const producto = await prisma.producto.update({
-      where: { id },
-      data,
-    });
-
-    return NextResponse.json(producto);
-  } catch (error) {
-    console.error("PATCH /api/productos/[id]", error);
-
-    return NextResponse.json(
-      { error: "Error al actualizar producto" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(producto);
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+  const { id } = await context.params;
 
-    const producto = await prisma.producto.update({
-      where: { id },
-      data: {
-        estado: "ARCHIVADO",
+  await prisma.$transaction(async (tx) => {
+    const variantes = await tx.variante.findMany({
+      where: { productoId: id },
+      select: { id: true },
+    });
+
+    const varianteIds = variantes.map((variante) => variante.id);
+
+    await tx.movimientoInventario.deleteMany({
+      where: {
+        varianteId: {
+          in: varianteIds,
+        },
       },
     });
 
-    return NextResponse.json(producto);
-  } catch (error) {
-    console.error("DELETE /api/productos/[id]", error);
+    await tx.variante.deleteMany({
+      where: {
+        productoId: id,
+      },
+    });
 
-    return NextResponse.json(
-      { error: "Error al archivar producto" },
-      { status: 500 }
-    );
-  }
+    await tx.productoColeccion.deleteMany({
+      where: {
+        productoId: id,
+      },
+    });
+
+    await tx.productoImagen.deleteMany({
+      where: {
+        productoId: id,
+      },
+    });
+
+    await tx.producto.delete({
+      where: {
+        id,
+      },
+    });
+  });
+
+  return NextResponse.json({ ok: true });
 }
