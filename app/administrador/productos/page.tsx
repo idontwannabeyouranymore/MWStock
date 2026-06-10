@@ -41,7 +41,12 @@ export default function ProductosPage() {
   async function obtenerProductos() {
     const response = await fetch("/api/productos");
     const data = await response.json();
-    setProductos(data);
+
+    const productosNoArchivados = data.filter(
+      (producto: Producto) => producto.estado !== "ARCHIVADO"
+    );
+
+    setProductos(productosNoArchivados);
   }
 
   async function obtenerColecciones() {
@@ -152,6 +157,31 @@ export default function ProductosPage() {
     } finally {
       setCargando(false);
     }
+  }
+
+  async function archivarProducto(id: string) {
+    const confirmar = confirm("¿Deseas archivar este producto?");
+
+    if (!confirmar) {
+      return;
+    }
+
+    const response = await fetch(`/api/productos/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        estado: "ARCHIVADO",
+      }),
+    });
+
+    if (!response.ok) {
+      alert("No se pudo archivar el producto");
+      return;
+    }
+
+    await obtenerProductos();
   }
 
   useEffect(() => {
@@ -297,6 +327,13 @@ export default function ProductosPage() {
                             .map((item) => item.coleccion.nombre)
                             .join(", ") || "Sin colección"}
                         </p>
+
+                        <button
+                          onClick={() => archivarProducto(producto.id)}
+                          className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                        >
+                          Archivar
+                        </button>
                       </div>
 
                       <span className="rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-300">
