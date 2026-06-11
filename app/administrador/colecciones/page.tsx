@@ -9,8 +9,6 @@ type Coleccion = {
   estado: string;
 };
 
-const TIENDA_ID = "cmq67l6zl0002vw3os7n7qe30";
-
 export default function ColeccionesPage() {
   const [colecciones, setColecciones] = useState<Coleccion[]>([]);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -82,7 +80,6 @@ export default function ColeccionesPage() {
           body: JSON.stringify({
             nombre,
             descripcion,
-            tiendaId: TIENDA_ID,
           }),
         });
 

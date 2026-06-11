@@ -10,6 +10,7 @@ export async function POST(request: Request) {
     where: {
       email: body.email,
     },
+    include: { tienda: true },
   });
 
   if (!usuario || !usuario.password) {
@@ -31,12 +32,21 @@ export async function POST(request: Request) {
     );
   }
 
+  // Bloquea el acceso si la tienda del admin está suspendida.
+  if (usuario.rol === "ADMIN" && usuario.tienda && !usuario.tienda.activa) {
+    return NextResponse.json(
+      { error: "Esta tienda está suspendida. Contacta al administrador." },
+      { status: 403 }
+    );
+  }
+
   const token = await crearToken({
     userId: usuario.id,
     email: usuario.email,
+    rol: usuario.rol,
   });
 
-  const response = NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true, rol: usuario.rol });
 
   response.cookies.set("mwstock_session", token, {
     httpOnly: true,

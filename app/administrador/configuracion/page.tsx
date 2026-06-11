@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { urlDeTienda } from "@/lib/dominios";
+import { ESTILOS } from "@/lib/estilos-catalogo";
 
 type Tienda = {
   id: string;
@@ -12,6 +14,7 @@ type Tienda = {
   logoUrl: string | null;
   bannerUrl: string | null;
   colorTema: string | null;
+  estiloCatalogo: string;
   slug: string;
 };
 
@@ -26,6 +29,7 @@ export default function ConfiguracionPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [colorTema, setColorTema] = useState("#ffffff");
+  const [estiloCatalogo, setEstiloCatalogo] = useState("JUVENIL");
 
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [subiendoBanner, setSubiendoBanner] = useState(false);
@@ -44,6 +48,7 @@ export default function ConfiguracionPage() {
     setLogoUrl(data.logoUrl || "");
     setBannerUrl(data.bannerUrl || "");
     setColorTema(data.colorTema || "#ffffff");
+    setEstiloCatalogo(data.estiloCatalogo || "JUVENIL");
   }
 
   async function subirImagen(archivo: File) {
@@ -88,6 +93,7 @@ export default function ConfiguracionPage() {
         logoUrl,
         bannerUrl,
         colorTema,
+        estiloCatalogo,
       }),
     });
 
@@ -236,6 +242,28 @@ export default function ConfiguracionPage() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-sm text-neutral-300">
+              Estilo del catálogo
+            </label>
+
+            <select
+              value={estiloCatalogo}
+              onChange={(event) => setEstiloCatalogo(event.target.value)}
+              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+            >
+              {ESTILOS.map((opcion) => (
+                <option key={opcion.valor} value={opcion.valor}>
+                  {opcion.nombre}
+                </option>
+              ))}
+            </select>
+
+            <p className="text-xs text-neutral-500">
+              {ESTILOS.find((o) => o.valor === estiloCatalogo)?.descripcion}
+            </p>
+          </div>
+
           <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
             <label className="text-sm text-neutral-300">
               Banner principal
@@ -323,7 +351,7 @@ export default function ConfiguracionPage() {
             <p className="text-sm text-neutral-400">Link público actual:</p>
 
             <p className="mt-1 break-all font-mono text-sm text-white">
-              http://localhost:3000/tienda/{tienda.slug}
+              {urlDeTienda(tienda.slug)}
             </p>
           </div>
 

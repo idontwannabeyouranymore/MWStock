@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const variantes = await prisma.variante.findMany({
+      where: { producto: { tiendaId: tienda.id } },
       include: {
         producto: true,
       },
@@ -25,6 +33,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const { productoId, talla, color, stock } = body;
@@ -40,6 +54,19 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "El stock no puede ser negativo" },
         { status: 400 }
+      );
+    }
+
+    // El producto debe pertenecer a la tienda de la sesión.
+    const producto = await prisma.producto.findUnique({
+      where: { id: productoId },
+      select: { tiendaId: true },
+    });
+
+    if (!producto || producto.tiendaId !== tienda.id) {
+      return NextResponse.json(
+        { error: "Producto no encontrado" },
+        { status: 404 }
       );
     }
 

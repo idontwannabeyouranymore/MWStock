@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 type TipoMovimiento =
   | "ENTRADA"
@@ -9,30 +10,14 @@ type TipoMovimiento =
   | "APARTADO"
   | "DANADO";
 
-async function actualizarEstadoProducto(productoId: string) {
-  const variantes = await prisma.variante.findMany({
-    where: {
-      productoId,
-      estado: {
-        not: "ARCHIVADA",
-      },
-    },
-  });
-
-  const hayStock = variantes.some((variante) => variante.stock > 0);
-
-  await prisma.producto.update({
-    where: {
-      id: productoId,
-    },
-    data: {
-      estado: hayStock ? "ACTIVO" : "AGOTADO",
-    },
-  });
-}
-
 export async function POST(request: Request) {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const {
@@ -62,15 +47,11 @@ export async function POST(request: Request) {
     }
 
     const varianteActual = await prisma.variante.findUnique({
-      where: {
-        id: varianteId,
-      },
-      include: {
-        producto: true,
-      },
+      where: { id: varianteId },
+      include: { producto: true },
     });
 
-    if (!varianteActual) {
+    if (!varianteActual || varianteActual.producto.tiendaId !== tienda.id) {
       return NextResponse.json(
         { error: "Variante no encontrada" },
         { status: 404 }
@@ -107,16 +88,12 @@ export async function POST(request: Request) {
 
     const resultado = await prisma.$transaction(async (tx) => {
       const varianteActualizada = await tx.variante.update({
-        where: {
-          id: varianteId,
-        },
+        where: { id: varianteId },
         data: {
           stock: stockNuevo,
           estado: stockNuevo > 0 ? "ACTIVA" : "AGOTADA",
         },
-        include: {
-          producto: true,
-        },
+        include: { producto: true },
       });
 
       const movimiento = await tx.movimientoInventario.create({
@@ -133,29 +110,18 @@ export async function POST(request: Request) {
       const variantesProducto = await tx.variante.findMany({
         where: {
           productoId: varianteActual.productoId,
-          estado: {
-            not: "ARCHIVADA",
-          },
+          estado: { not: "ARCHIVADA" },
         },
       });
 
-      const hayStock = variantesProducto.some(
-        (variante) => variante.stock > 0
-      );
+      const hayStock = variantesProducto.some((variante) => variante.stock > 0);
 
       await tx.producto.update({
-        where: {
-          id: varianteActual.productoId,
-        },
-        data: {
-          estado: hayStock ? "ACTIVO" : "AGOTADO",
-        },
+        where: { id: varianteActual.productoId },
+        data: { estado: hayStock ? "ACTIVO" : "AGOTADO" },
       });
 
-      return {
-        variante: varianteActualizada,
-        movimiento,
-      };
+      return { variante: varianteActualizada, movimiento };
     });
 
     return NextResponse.json(resultado, { status: 201 });

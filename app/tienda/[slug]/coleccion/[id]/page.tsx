@@ -1,0 +1,248 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
+import { enlaceCatalogo } from "@/lib/dominios";
+
+type PageProps = {
+  params: Promise<{
+    slug: string;
+    id: string;
+  }>;
+};
+
+type VariantePublica = {
+  id: string;
+  talla: string;
+  color: string | null;
+  stock: number;
+  estado: string;
+};
+
+export default async function ColeccionPublicaPage({ params }: PageProps) {
+  const { slug, id } = await params;
+
+  const tienda = await prisma.tienda.findUnique({
+    where: { slug },
+  });
+
+  if (!tienda || !tienda.activa) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6 text-white">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Tienda no disponible</h1>
+        </div>
+      </main>
+    );
+  }
+
+  const coleccion = await prisma.coleccion.findFirst({
+    where: {
+      id,
+      tiendaId: tienda.id,
+      estado: "ACTIVA",
+    },
+    include: {
+      productos: {
+        include: {
+          producto: {
+            include: {
+              imagenes: { orderBy: { orden: "asc" } },
+              variantes: {
+                where: { estado: { not: "ARCHIVADA" } },
+                orderBy: { createdAt: "asc" },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!coleccion) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6 text-white">
+        <section className="text-center">
+          <h1 className="text-3xl font-bold">Colección no encontrada</h1>
+          <Link
+            href={enlaceCatalogo(slug)}
+            className="mt-6 inline-flex rounded-xl bg-white px-5 py-3 font-semibold text-black"
+          >
+            Volver al catálogo
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  const colorTema = tienda.colorTema || "#ffffff";
+  const estilo = configEstilo(tienda.estiloCatalogo);
+
+  const productos = coleccion.productos
+    .map(({ producto }) => producto)
+    .filter((producto) => producto.estado !== "ARCHIVADO");
+
+  return (
+    <main className="min-h-screen bg-neutral-950 text-white">
+      <section className="mx-auto max-w-6xl px-6 py-8">
+        <Link
+          href={enlaceCatalogo(slug)}
+          className="text-sm text-neutral-400 transition hover:text-white"
+        >
+          ← Volver a colecciones
+        </Link>
+
+        <header className="animar-entrada mt-6 mb-10">
+          <p
+            className="text-sm uppercase tracking-[0.3em]"
+            style={{ color: colorTema }}
+          >
+            Colección
+          </p>
+          <h1 className="mt-2 text-4xl font-bold">
+            {estilo.emojis ? "✨ " : ""}
+            {coleccion.nombre}
+          </h1>
+          {coleccion.descripcion && (
+            <p className="mt-3 max-w-2xl text-neutral-300">
+              {coleccion.descripcion}
+            </p>
+          )}
+        </header>
+
+        {productos.length === 0 ? (
+          <p className="rounded-2xl border border-neutral-800 p-6 text-center text-neutral-400">
+            Esta colección todavía no tiene productos.
+          </p>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {productos.map((producto, indice) => {
+              const variantesActivas = producto.variantes as VariantePublica[];
+
+              const stockTotal = variantesActivas.reduce(
+                (total, variante) => total + variante.stock,
+                0
+              );
+
+              const soldOut =
+                producto.estado === "AGOTADO" || stockTotal === 0;
+
+              const imagenPrincipal = producto.imagenes[0];
+              const nuevo = estilo.badges && esNuevo(producto.createdAt);
+              const destacado = estilo.badges && producto.destacado;
+
+              return (
+                <article
+                  key={producto.id}
+                  style={{ animationDelay: `${indice * 70}ms` }}
+                  className={`group animar-entrada overflow-hidden ${estilo.tarjeta} ${estilo.cardHover}`}
+                >
+                  <Link
+                    href={enlaceCatalogo(slug, `/producto/${producto.id}`)}
+                    className="block"
+                  >
+                    <div className="relative flex h-64 items-center justify-center overflow-hidden bg-neutral-800">
+                      {imagenPrincipal ? (
+                        <img
+                          src={imagenPrincipal.url}
+                          alt={producto.nombre}
+                          className={`h-full w-full object-cover ${estilo.imagenHover}`}
+                        />
+                      ) : (
+                        <span className="text-neutral-500">Sin imagen</span>
+                      )}
+
+                      {/* Badges */}
+                      <div className="absolute left-3 top-3 flex flex-col gap-2">
+                        {destacado && (
+                          <span className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold text-black shadow">
+                            {estilo.emojis ? "⭐ " : ""}Destacado
+                          </span>
+                        )}
+                        {nuevo && !soldOut && (
+                          <span
+                            className="rounded-full px-3 py-1 text-xs font-bold text-black shadow"
+                            style={{ backgroundColor: colorTema }}
+                          >
+                            {estilo.emojis ? "🔥 " : ""}Nuevo
+                          </span>
+                        )}
+                      </div>
+
+                      {soldOut && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                          <span className="animar-pop rounded-full border border-white px-5 py-2 text-lg font-bold">
+                            SOLD OUT
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3 p-5">
+                      <h3 className="text-lg font-semibold">
+                        {producto.nombre}
+                      </h3>
+
+                      <p
+                        className="text-xl font-bold"
+                        style={{ color: colorTema }}
+                      >
+                        ${Number(producto.precio).toFixed(2)}
+                      </p>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-neutral-300">
+                          Tallas
+                        </p>
+
+                        {variantesActivas.length === 0 ? (
+                          <p className="text-sm text-neutral-500">
+                            Sin tallas registradas
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {variantesActivas.map((variante) => (
+                              <span
+                                key={variante.id}
+                                className="rounded-full px-3 py-1 text-xs font-semibold transition"
+                                style={{
+                                  backgroundColor:
+                                    variante.stock > 0 ? colorTema : "#262626",
+                                  color:
+                                    variante.stock > 0 ? "#000000" : "#737373",
+                                }}
+                              >
+                                {variante.talla}{" "}
+                                {variante.stock > 0
+                                  ? `(${variante.stock})`
+                                  : "(0)"}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+
+                  {tienda.whatsapp && (
+                    <div className="px-5 pb-5">
+                      <a
+                        href={`https://wa.me/${tienda.whatsapp}?text=${encodeURIComponent(
+                          `Hola, me interesa el producto ${producto.nombre}`
+                        )}`}
+                        target="_blank"
+                        className="block rounded-xl px-4 py-3 text-center font-semibold text-black transition hover:scale-[1.02]"
+                        style={{ backgroundColor: colorTema }}
+                      >
+                        {estilo.emojis ? "💬 " : ""}Preguntar por WhatsApp
+                      </a>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

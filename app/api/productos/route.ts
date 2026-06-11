@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const productos = await prisma.producto.findMany({
+      where: { tiendaId: tienda.id },
       include: {
         colecciones: {
           include: {
@@ -31,15 +39,32 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
 
-    const { nombre, descripcion, marca, precio, tiendaId, coleccionIds } = body;
+    const { nombre, descripcion, marca, precio, coleccionIds } = body;
 
-    if (!nombre || !precio || !tiendaId) {
+    if (!nombre || !precio) {
       return NextResponse.json(
-        { error: "Nombre, precio y tiendaId son obligatorios" },
+        { error: "Nombre y precio son obligatorios" },
         { status: 400 }
       );
+    }
+
+    // Seguridad: solo permitimos vincular colecciones que sean de ESTA tienda.
+    let coleccionesValidas: string[] = [];
+
+    if (Array.isArray(coleccionIds) && coleccionIds.length > 0) {
+      const propias = await prisma.coleccion.findMany({
+        where: { id: { in: coleccionIds }, tiendaId: tienda.id },
+        select: { id: true },
+      });
+      coleccionesValidas = propias.map((c) => c.id);
     }
 
     const producto = await prisma.producto.create({
@@ -48,9 +73,9 @@ export async function POST(request: Request) {
         descripcion,
         marca,
         precio,
-        tiendaId,
+        tiendaId: tienda.id,
         colecciones: {
-          create: coleccionIds?.map((coleccionId: string) => ({
+          create: coleccionesValidas.map((coleccionId) => ({
             coleccionId,
           })),
         },

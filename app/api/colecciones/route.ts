@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const colecciones = await prisma.coleccion.findMany({
+      where: { tiendaId: tienda.id },
       orderBy: {
         createdAt: "desc",
       },
@@ -22,13 +30,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const tienda = await obtenerTiendaDeSesion();
+
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
 
-    const { nombre, descripcion, tiendaId } = body;
+    const { nombre, descripcion } = body;
 
-    if (!nombre || !tiendaId) {
+    if (!nombre) {
       return NextResponse.json(
-        { error: "Nombre y tiendaId son obligatorios" },
+        { error: "El nombre es obligatorio" },
         { status: 400 }
       );
     }
@@ -37,7 +51,7 @@ export async function POST(request: Request) {
       data: {
         nombre,
         descripcion,
-        tiendaId,
+        tiendaId: tienda.id,
       },
     });
 

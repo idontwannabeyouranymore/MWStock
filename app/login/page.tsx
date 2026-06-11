@@ -22,14 +22,16 @@ export default function LoginPage() {
       body: JSON.stringify({ email, password }),
     });
 
+    const data = await response.json().catch(() => ({}));
+
     setCargando(false);
 
     if (!response.ok) {
-      alert("Credenciales incorrectas");
+      alert(data.error || "Credenciales incorrectas");
       return;
     }
 
-    router.push("/administrador");
+    router.push(data.rol === "DUENO" ? "/dueno" : "/administrador");
   }
 
   return (

@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
+  const tienda = await obtenerTiendaDeSesion();
+
+  if (!tienda) {
+    redirect("/login");
+  }
+
   const [
     totalColecciones,
     totalProductos,
@@ -10,51 +18,36 @@ export default async function DashboardPage() {
     movimientosRecientes,
   ] = await Promise.all([
     prisma.coleccion.count({
-      where: {
-        estado: {
-          not: "ARCHIVADA",
-        },
-      },
+      where: { tiendaId: tienda.id, estado: { not: "ARCHIVADA" } },
     }),
 
     prisma.producto.count({
-      where: {
-        estado: {
-          not: "ARCHIVADO",
-        },
-      },
+      where: { tiendaId: tienda.id, estado: { not: "ARCHIVADO" } },
     }),
 
     prisma.producto.count({
-      where: {
-        estado: "AGOTADO",
-      },
+      where: { tiendaId: tienda.id, estado: "AGOTADO" },
     }),
 
     prisma.variante.count({
       where: {
-        estado: {
-          not: "ARCHIVADA",
-        },
+        producto: { tiendaId: tienda.id },
+        estado: { not: "ARCHIVADA" },
       },
     }),
 
     prisma.variante.aggregate({
       where: {
-        estado: {
-          not: "ARCHIVADA",
-        },
+        producto: { tiendaId: tienda.id },
+        estado: { not: "ARCHIVADA" },
       },
-      _sum: {
-        stock: true,
-      },
+      _sum: { stock: true },
     }),
 
     prisma.movimientoInventario.findMany({
+      where: { variante: { producto: { tiendaId: tienda.id } } },
       take: 5,
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
       include: {
         variante: {
           include: {
@@ -82,9 +75,9 @@ export default async function DashboardPage() {
       descripcion: "Productos en SOLD OUT",
     },
     {
-      titulo: "Variantes",
+      titulo: "Tallas",
       valor: totalVariantes,
-      descripcion: "Tallas y colores registrados",
+      descripcion: "Tallas registradas",
     },
     {
       titulo: "Stock total",
@@ -101,12 +94,10 @@ export default async function DashboardPage() {
             Administrador
           </p>
 
-          <h1 className="mt-2 text-4xl font-bold">
-            Dashboard
-          </h1>
+          <h1 className="mt-2 text-4xl font-bold">Dashboard</h1>
 
           <p className="mt-3 text-neutral-400">
-            Resumen general de tu tienda.
+            Resumen general de {tienda.nombre}.
           </p>
         </div>
 
@@ -116,13 +107,9 @@ export default async function DashboardPage() {
               key={card.titulo}
               className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
             >
-              <p className="text-sm text-neutral-400">
-                {card.titulo}
-              </p>
+              <p className="text-sm text-neutral-400">{card.titulo}</p>
 
-              <p className="mt-3 text-4xl font-bold">
-                {card.valor}
-              </p>
+              <p className="mt-3 text-4xl font-bold">{card.valor}</p>
 
               <p className="mt-2 text-sm text-neutral-500">
                 {card.descripcion}
@@ -132,9 +119,7 @@ export default async function DashboardPage() {
         </section>
 
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-          <h2 className="text-xl font-semibold">
-            Movimientos recientes
-          </h2>
+          <h2 className="text-xl font-semibold">Movimientos recientes</h2>
 
           {movimientosRecientes.length === 0 ? (
             <p className="mt-4 text-neutral-400">
@@ -142,7 +127,7 @@ export default async function DashboardPage() {
             </p>
           ) : (
             <div className="mt-4 space-y-3">
-              {movimientosRecientes.map((movimiento: any) => (
+              {movimientosRecientes.map((movimiento) => (
                 <article
                   key={movimiento.id}
                   className="rounded-xl border border-neutral-800 bg-neutral-950 p-4"
@@ -166,8 +151,7 @@ export default async function DashboardPage() {
                     <div className="text-sm text-neutral-300">
                       <p>Tipo: {movimiento.tipo}</p>
                       <p>
-                        {movimiento.stockAnterior} →{" "}
-                        {movimiento.stockNuevo}
+                        {movimiento.stockAnterior} → {movimiento.stockNuevo}
                       </p>
                     </div>
                   </div>

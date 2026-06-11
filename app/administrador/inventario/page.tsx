@@ -1,88 +1,75 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
-type Variante = {
+type Coleccion = {
   id: string;
-  talla: string;
-  color: string | null;
-  stock: number;
+  nombre: string;
   estado: string;
-  producto: {
-    id: string;
-    nombre: string;
-    estado: string;
-  };
 };
 
-type Movimiento = {
+type Producto = {
   id: string;
-  tipo: string;
-  cantidad: number;
-  stockAnterior: number;
-  stockNuevo: number;
-  nota: string | null;
-  createdAt: string;
-  variante: {
-    talla: string;
-    color: string | null;
-    producto: {
-      nombre: string;
-    };
-  };
+  estado: string;
+  colecciones: { coleccion: { id: string } }[];
+  variantes: { stock: number; estado: string }[];
+};
+
+type ResumenColeccion = {
+  id: string;
+  nombre: string;
+  productos: number;
+  stock: number;
 };
 
 export default function InventarioPage() {
-  const [variantes, setVariantes] = useState<Variante[]>([]);
-  const [historial, setHistorial] = useState<Movimiento[]>([]);
-  const [cargandoId, setCargandoId] = useState<string | null>(null);
+  const [resumen, setResumen] = useState<ResumenColeccion[]>([]);
+  const [cargando, setCargando] = useState(true);
 
-  async function obtenerVariantes() {
-    const response = await fetch("/api/variantes");
-    const data = await response.json();
-    setVariantes(data);
-  }
+  async function cargar() {
+    const [colRes, prodRes] = await Promise.all([
+      fetch("/api/colecciones"),
+      fetch("/api/productos"),
+    ]);
 
-  async function obtenerHistorial() {
-    const response = await fetch("/api/inventario/historial");
-    const data = await response.json();
-    setHistorial(data);
-  }
+    const colecciones: Coleccion[] = await colRes.json();
+    const productos: Producto[] = await prodRes.json();
 
-  async function registrarMovimiento(
-    varianteId: string,
-    tipo: "VENTA" | "ENTRADA",
-    cantidad: number
-  ) {
-    setCargandoId(varianteId);
+    const activas = colecciones.filter((c) => c.estado !== "ARCHIVADA");
 
-    const response = await fetch("/api/inventario/movimiento", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        varianteId,
-        tipo,
-        cantidad,
-        nota: tipo === "VENTA" ? "Venta desde panel" : "Entrada desde panel",
-      }),
+    const data: ResumenColeccion[] = activas.map((coleccion) => {
+      const productosDeColeccion = productos.filter(
+        (producto) =>
+          producto.estado !== "ARCHIVADO" &&
+          producto.colecciones.some(
+            (pc) => pc.coleccion.id === coleccion.id
+          )
+      );
+
+      const stock = productosDeColeccion.reduce(
+        (total, producto) =>
+          total +
+          producto.variantes
+            .filter((v) => v.estado !== "ARCHIVADA")
+            .reduce((suma, v) => suma + v.stock, 0),
+        0
+      );
+
+      return {
+        id: coleccion.id,
+        nombre: coleccion.nombre,
+        productos: productosDeColeccion.length,
+        stock,
+      };
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || "Error al modificar inventario");
-    }
-
-    await obtenerVariantes();
-    await obtenerHistorial();
-
-    setCargandoId(null);
+    setResumen(data);
+    setCargando(false);
   }
 
   useEffect(() => {
-    obtenerVariantes();
-    obtenerHistorial();
+    cargar();
   }, []);
 
   return (
@@ -93,111 +80,44 @@ export default function InventarioPage() {
             Administrador
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold">
-            Inventario
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold">Inventario</h1>
 
           <p className="mt-2 text-neutral-400">
-            Descuenta ventas, agrega entradas y revisa movimientos de stock.
+            Elige una colección para ver y ajustar el stock de sus productos.
           </p>
         </div>
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">
-            Stock actual
-          </h2>
-
-          <div className="grid gap-4">
-            {variantes.map((variante) => (
-              <article
-                key={variante.id}
-                className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
+        {cargando ? (
+          <p className="text-neutral-400">Cargando...</p>
+        ) : resumen.length === 0 ? (
+          <p className="rounded-2xl border border-neutral-800 p-6 text-neutral-400">
+            Todavía no hay colecciones.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {resumen.map((coleccion) => (
+              <Link
+                key={coleccion.id}
+                href={`/administrador/inventario/${coleccion.id}`}
+                className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 transition hover:border-neutral-600"
               >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-xl font-semibold">{coleccion.nombre}</h2>
+
+                <div className="mt-4 flex gap-6">
                   <div>
-                    <h3 className="text-lg font-semibold">
-                      {variante.producto.nombre}
-                    </h3>
-
-                    <p className="text-sm text-neutral-400">
-                      Talla: {variante.talla} · Color:{" "}
-                      {variante.color || "Sin color"}
-                    </p>
-
-                    <p className="mt-2 text-2xl font-bold">
-                      Stock: {variante.stock}
-                    </p>
-
-                    <p className="mt-1 text-sm text-neutral-500">
-                      Estado variante: {variante.estado}
-                    </p>
+                    <p className="text-3xl font-bold">{coleccion.productos}</p>
+                    <p className="text-xs text-neutral-500">productos</p>
                   </div>
 
-                  <div className="flex gap-3">
-                    <button
-                      disabled={cargandoId === variante.id}
-                      onClick={() =>
-                        registrarMovimiento(variante.id, "VENTA", 1)
-                      }
-                      className="rounded-xl bg-red-500 px-4 py-3 font-semibold text-white disabled:opacity-50"
-                    >
-                      -1 vendido
-                    </button>
-
-                    <button
-                      disabled={cargandoId === variante.id}
-                      onClick={() =>
-                        registrarMovimiento(variante.id, "ENTRADA", 1)
-                      }
-                      className="rounded-xl bg-white px-4 py-3 font-semibold text-black disabled:opacity-50"
-                    >
-                      +1 entrada
-                    </button>
+                  <div>
+                    <p className="text-3xl font-bold">{coleccion.stock}</p>
+                    <p className="text-xs text-neutral-500">piezas en stock</p>
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">
-            Historial de movimientos
-          </h2>
-
-          <div className="grid gap-3">
-            {historial.map((movimiento) => (
-              <article
-                key={movimiento.id}
-                className="rounded-xl border border-neutral-800 bg-neutral-900 p-4"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold">
-                      {movimiento.variante.producto.nombre}
-                    </p>
-
-                    <p className="text-sm text-neutral-400">
-                      {movimiento.variante.talla} ·{" "}
-                      {movimiento.variante.color || "Sin color"}
-                    </p>
-
-                    <p className="text-sm text-neutral-500">
-                      {movimiento.nota || "Sin nota"}
-                    </p>
-                  </div>
-
-                  <div className="text-sm text-neutral-300">
-                    <p>Tipo: {movimiento.tipo}</p>
-                    <p>
-                      {movimiento.stockAnterior} → {movimiento.stockNuevo}
-                    </p>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        )}
       </section>
     </main>
   );

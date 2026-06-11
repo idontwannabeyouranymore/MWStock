@@ -1,124 +1,101 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type Variante = {
-  id: string;
+type VentaItem = {
+  productoNombre: string;
   talla: string;
-  color: string | null;
-  stock: number;
-  estado: string;
-  producto: {
-    id: string;
-    nombre: string;
-    precio: string;
-  };
+  cantidad: number;
+  precioUnitario: string;
+  subtotal: string;
 };
 
-type Movimiento = {
+type Venta = {
   id: string;
-  tipo: string;
-  cantidad: number;
-  stockAnterior: number;
-  stockNuevo: number;
-  nota: string | null;
+  total: string;
+  metodoPago: string;
+  montoRecibido: string | null;
+  cambio: string | null;
+  clienteNombre: string | null;
+  clienteTelefono: string | null;
   createdAt: string;
-  variante: {
-    talla: string;
-    color: string | null;
-    producto: {
-      nombre: string;
-    };
-  };
+  items: VentaItem[];
+};
+
+function fechaLocal(fecha: Date) {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
+const METODO_ETIQUETA: Record<string, string> = {
+  EFECTIVO: "Efectivo",
+  TARJETA: "Tarjeta",
+  TRANSFERENCIA: "Transferencia",
 };
 
 export default function VentasPage() {
-  const [variantes, setVariantes] = useState<Variante[]>([]);
-  const [historial, setHistorial] = useState<Movimiento[]>([]);
+  const [ventas, setVentas] = useState<Venta[]>([]);
+  const [fecha, setFecha] = useState(fechaLocal(new Date()));
+  const [cargando, setCargando] = useState(true);
 
-  const [varianteId, setVarianteId] = useState("");
-  const [cantidad, setCantidad] = useState("1");
-  const [cargando, setCargando] = useState(false);
-
-  async function obtenerVariantes() {
-    const response = await fetch("/api/variantes");
-    const data = await response.json();
-
-    const disponibles = data.filter((variante: Variante) => variante.estado !== "ARCHIVADA");
-
-    setVariantes(disponibles);
-
-    if (disponibles.length > 0) {
-      setVarianteId(disponibles[0].id);
-    }
-  }
-
-  async function obtenerHistorial() {
-    const response = await fetch("/api/inventario/historial");
-    const data = await response.json();
-
-    const ventas = data.filter(
-      (movimiento: Movimiento) => movimiento.tipo === "VENTA"
-    );
-
-    setHistorial(ventas);
-  }
-
-  async function registrarVenta(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!varianteId) {
-      alert("Selecciona una variante");
-      return;
-    }
-
-    if (!cantidad || Number(cantidad) <= 0) {
-      alert("La cantidad debe ser mayor a 0");
-      return;
-    }
-
-    setCargando(true);
-
-    const response = await fetch("/api/inventario/movimiento", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        varianteId,
-        tipo: "VENTA",
-        cantidad: Number(cantidad),
-        nota: "Venta registrada desde módulo de ventas",
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || "No se pudo registrar la venta");
-      setCargando(false);
-      return;
-    }
-
-    setCantidad("1");
-    await obtenerVariantes();
-    await obtenerHistorial();
-
+  async function cargar() {
+    const response = await fetch("/api/ventas");
+    const data: Venta[] = await response.json();
+    setVentas(data);
     setCargando(false);
   }
 
   useEffect(() => {
-    obtenerVariantes();
-    obtenerHistorial();
+    cargar();
   }, []);
 
-  const varianteSeleccionada = variantes.find(
-    (variante) => variante.id === varianteId
+  const ventasDelDia = useMemo(
+    () => ventas.filter((v) => fechaLocal(new Date(v.createdAt)) === fecha),
+    [ventas, fecha]
   );
 
-  const totalVenta =
-    varianteSeleccionada && cantidad
-      ? Number(varianteSeleccionada.producto.precio) * Number(cantidad)
-      : 0;
+  const totalDinero = ventasDelDia.reduce(
+    (suma, v) => suma + Number(v.total),
+    0
+  );
+
+  const totalPiezas = ventasDelDia.reduce(
+    (suma, v) => suma + v.items.reduce((s, i) => s + i.cantidad, 0),
+    0
+  );
+
+  const porProducto = useMemo(() => {
+    const mapa = new Map<string, { cantidad: number; dinero: number }>();
+    for (const venta of ventasDelDia) {
+      for (const item of venta.items) {
+        const actual = mapa.get(item.productoNombre) || {
+          cantidad: 0,
+          dinero: 0,
+        };
+        actual.cantidad += item.cantidad;
+        actual.dinero += Number(item.subtotal);
+        mapa.set(item.productoNombre, actual);
+      }
+    }
+    return Array.from(mapa.entries())
+      .map(([nombre, datos]) => ({ nombre, ...datos }))
+      .sort((a, b) => b.dinero - a.dinero);
+  }, [ventasDelDia]);
+
+  const porMetodo = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const venta of ventasDelDia) {
+      mapa.set(
+        venta.metodoPago,
+        (mapa.get(venta.metodoPago) || 0) + Number(venta.total)
+      );
+    }
+    return Array.from(mapa.entries());
+  }, [ventasDelDia]);
+
+  const esHoy = fecha === fechaLocal(new Date());
 
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-8 text-white">
@@ -127,104 +104,165 @@ export default function VentasPage() {
           <p className="text-sm uppercase tracking-[0.3em] text-neutral-500">
             Administrador
           </p>
-
           <h1 className="mt-2 text-3xl font-bold">Ventas</h1>
-
           <p className="mt-2 text-neutral-400">
-            Registra ventas y descuenta stock automáticamente.
+            Resumen de las ventas registradas en el punto de venta.
           </p>
         </div>
 
-        <form
-          onSubmit={registrarVenta}
-          className="space-y-5 rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
-        >
-          <h2 className="text-xl font-semibold">Nueva venta</h2>
-
-          <div className="space-y-2">
-            <label className="text-sm text-neutral-300">
-              Producto / variante
-            </label>
-
-            <select
-              value={varianteId}
-              onChange={(event) => setVarianteId(event.target.value)}
-              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
-            >
-              {variantes.map((variante) => (
-                <option key={variante.id} value={variante.id}>
-                  {variante.producto.nombre} | Talla {variante.talla} |{" "}
-                  {variante.color || "Sin color"} | Stock: {variante.stock}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm text-neutral-300">
-              Cantidad vendida
-            </label>
-
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <label className="text-sm text-neutral-300">Día</label>
             <input
-              type="number"
-              min="1"
-              value={cantidad}
-              onChange={(event) => setCantidad(event.target.value)}
-              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+              type="date"
+              value={fecha}
+              max={fechaLocal(new Date())}
+              onChange={(e) => setFecha(e.target.value)}
+              className="rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2 text-white outline-none focus:border-white"
             />
           </div>
-
-          <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
-            <p className="text-sm text-neutral-400">Total estimado</p>
-
-            <p className="mt-1 text-3xl font-bold">
-              ${totalVenta.toFixed(2)}
-            </p>
-          </div>
-
-          <button
-            disabled={cargando}
-            className="rounded-xl bg-white px-5 py-3 font-semibold text-black disabled:opacity-50"
-          >
-            {cargando ? "Registrando..." : "Registrar venta"}
-          </button>
-        </form>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Ventas recientes</h2>
-
-          {historial.length === 0 ? (
-            <p className="rounded-xl border border-neutral-800 p-4 text-neutral-400">
-              Todavía no hay ventas registradas.
-            </p>
-          ) : (
-            <div className="grid gap-3">
-              {historial.map((venta) => (
-                <article
-                  key={venta.id}
-                  className="rounded-xl border border-neutral-800 bg-neutral-900 p-4"
-                >
-                  <p className="font-semibold">
-                    {venta.variante.producto.nombre}
-                  </p>
-
-                  <p className="text-sm text-neutral-400">
-                    Talla {venta.variante.talla} ·{" "}
-                    {venta.variante.color || "Sin color"}
-                  </p>
-
-                  <p className="mt-2 text-sm text-neutral-300">
-                    Vendidas: {venta.cantidad}
-                  </p>
-
-                  <p className="text-sm text-neutral-500">
-                    Stock: {venta.stockAnterior} → {venta.stockNuevo}
-                  </p>
-                </article>
-              ))}
-            </div>
+          {!esHoy && (
+            <button
+              onClick={() => setFecha(fechaLocal(new Date()))}
+              className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold"
+            >
+              Hoy
+            </button>
           )}
-        </section>
+        </div>
+
+        {cargando ? (
+          <p className="text-neutral-400">Cargando...</p>
+        ) : (
+          <>
+            <section className="grid gap-4 sm:grid-cols-3">
+              <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+                <p className="text-sm text-neutral-400">Dinero del día</p>
+                <p className="mt-3 text-4xl font-bold">
+                  ${totalDinero.toFixed(2)}
+                </p>
+              </article>
+              <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+                <p className="text-sm text-neutral-400">Piezas vendidas</p>
+                <p className="mt-3 text-4xl font-bold">{totalPiezas}</p>
+              </article>
+              <article className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+                <p className="text-sm text-neutral-400">Ventas</p>
+                <p className="mt-3 text-4xl font-bold">{ventasDelDia.length}</p>
+              </article>
+            </section>
+
+            {porMetodo.length > 0 && (
+              <section className="flex flex-wrap gap-3">
+                {porMetodo.map(([metodo, monto]) => (
+                  <span
+                    key={metodo}
+                    className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm"
+                  >
+                    {METODO_ETIQUETA[metodo] || metodo}:{" "}
+                    <span className="font-semibold">${monto.toFixed(2)}</span>
+                  </span>
+                ))}
+              </section>
+            )}
+
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Productos vendidos</h2>
+
+              {porProducto.length === 0 ? (
+                <p className="rounded-xl border border-neutral-800 p-4 text-neutral-400">
+                  No hay ventas este día.
+                </p>
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-neutral-800">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-neutral-900 text-neutral-400">
+                      <tr>
+                        <th className="px-5 py-3">Producto</th>
+                        <th className="px-5 py-3 text-center">Cantidad</th>
+                        <th className="px-5 py-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {porProducto.map((fila) => (
+                        <tr
+                          key={fila.nombre}
+                          className="border-t border-neutral-800 bg-neutral-950"
+                        >
+                          <td className="px-5 py-3 font-semibold">
+                            {fila.nombre}
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            {fila.cantidad}
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            ${fila.dinero.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-neutral-700 bg-neutral-900 font-bold">
+                        <td className="px-5 py-3">Total</td>
+                        <td className="px-5 py-3 text-center">{totalPiezas}</td>
+                        <td className="px-5 py-3 text-right">
+                          ${totalDinero.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Tickets del día</h2>
+
+              {ventasDelDia.length === 0 ? (
+                <p className="rounded-xl border border-neutral-800 p-4 text-neutral-400">
+                  Sin tickets este día.
+                </p>
+              ) : (
+                <div className="grid gap-3">
+                  {ventasDelDia.map((venta) => (
+                    <article
+                      key={venta.id}
+                      className="rounded-xl border border-neutral-800 bg-neutral-900 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-neutral-400">
+                            {new Date(venta.createdAt).toLocaleTimeString(
+                              "es-MX",
+                              { hour: "2-digit", minute: "2-digit" }
+                            )}{" "}
+                            · {METODO_ETIQUETA[venta.metodoPago] ||
+                              venta.metodoPago}
+                            {venta.clienteNombre
+                              ? ` · ${venta.clienteNombre}`
+                              : ""}
+                          </p>
+                          <div className="mt-1 text-sm text-neutral-300">
+                            {venta.items.map((item, i) => (
+                              <span key={i}>
+                                {item.cantidad}x {item.productoNombre} (
+                                {item.talla})
+                                {i < venta.items.length - 1 ? ", " : ""}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-lg font-bold">
+                          ${Number(venta.total).toFixed(2)}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </section>
     </main>
   );

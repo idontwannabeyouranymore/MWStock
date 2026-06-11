@@ -9,6 +9,7 @@ datasource db {
 }
 enum RolUsuario {
   ADMIN
+  DUENO
 }
 
 enum EstadoColeccion {
@@ -58,16 +59,19 @@ model Tienda {
   logoUrl     String?
   bannerUrl   String?
   colorTema   String?  @default("#ffffff")
+  estiloCatalogo String @default("JUVENIL")
   whatsapp    String?
   instagram   String?
   direccion   String?
   slug        String   @unique
+  activa      Boolean  @default(true)
 
   usuarioId   String   @unique
   usuario     Usuario  @relation(fields: [usuarioId], references: [id])
 
   colecciones Coleccion[]
   productos   Producto[]
+  ventas      Venta[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -141,6 +145,7 @@ model Variante {
   producto   Producto       @relation(fields: [productoId], references: [id])
 
   movimientos MovimientoInventario[]
+  ventaItems  VentaItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -181,4 +186,52 @@ model MovimientoInventario {
   @@index([varianteId])
   @@index([tipo])
   @@index([createdAt])
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+}
+
+model Venta {
+  id              String     @id @default(cuid())
+  total           Decimal    @db.Decimal(10, 2)
+  metodoPago      MetodoPago @default(EFECTIVO)
+  montoRecibido   Decimal?   @db.Decimal(10, 2)
+  cambio          Decimal?   @db.Decimal(10, 2)
+  clienteNombre   String?
+  clienteTelefono String?
+
+  tiendaId        String
+  tienda          Tienda     @relation(fields: [tiendaId], references: [id])
+
+  items           VentaItem[]
+
+  createdAt       DateTime   @default(now())
+
+  @@index([tiendaId])
+  @@index([createdAt])
+}
+
+model VentaItem {
+  id             String    @id @default(cuid())
+
+  ventaId        String
+  venta          Venta     @relation(fields: [ventaId], references: [id])
+
+  varianteId     String?
+  variante       Variante? @relation(fields: [varianteId], references: [id])
+
+  // Snapshots: se guardan al momento de la venta para que el reporte no cambie
+  // aunque luego se edite el precio o se borre el producto.
+  productoNombre String
+  talla          String
+  cantidad       Int
+  precioUnitario Decimal   @db.Decimal(10, 2)
+  subtotal       Decimal   @db.Decimal(10, 2)
+
+  createdAt      DateTime  @default(now())
+
+  @@index([ventaId])
 }

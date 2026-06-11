@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { eliminarDeCloudinary } from "@/lib/cloudinary";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
+  const tienda = await obtenerTiendaDeSesion();
+  if (!tienda) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   const { id } = await context.params;
 
   const producto = await prisma.producto.findUnique({
@@ -17,7 +24,7 @@ export async function GET(_request: Request, context: RouteContext) {
     },
   });
 
-  if (!producto) {
+  if (!producto || producto.tiendaId !== tienda.id) {
     return NextResponse.json(
       { error: "Producto no encontrado" },
       { status: 404 }
@@ -28,7 +35,25 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const tienda = await obtenerTiendaDeSesion();
+  if (!tienda) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   const { id } = await context.params;
+
+  const existente = await prisma.producto.findUnique({
+    where: { id },
+    select: { tiendaId: true },
+  });
+
+  if (!existente || existente.tiendaId !== tienda.id) {
+    return NextResponse.json(
+      { error: "Producto no encontrado" },
+      { status: 404 }
+    );
+  }
+
   const body = await request.json();
 
   const producto = await prisma.producto.update({
@@ -47,7 +72,29 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  const tienda = await obtenerTiendaDeSesion();
+  if (!tienda) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   const { id } = await context.params;
+
+  const existente = await prisma.producto.findUnique({
+    where: { id },
+    select: { tiendaId: true },
+  });
+
+  if (!existente || existente.tiendaId !== tienda.id) {
+    return NextResponse.json(
+      { error: "Producto no encontrado" },
+      { status: 404 }
+    );
+  }
+
+  const imagenes = await prisma.productoImagen.findMany({
+    where: { productoId: id },
+    select: { url: true },
+  });
 
   await prisma.$transaction(async (tx) => {
     const variantes = await tx.variante.findMany({
@@ -58,37 +105,16 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const varianteIds = variantes.map((variante) => variante.id);
 
     await tx.movimientoInventario.deleteMany({
-      where: {
-        varianteId: {
-          in: varianteIds,
-        },
-      },
+      where: { varianteId: { in: varianteIds } },
     });
 
-    await tx.variante.deleteMany({
-      where: {
-        productoId: id,
-      },
-    });
-
-    await tx.productoColeccion.deleteMany({
-      where: {
-        productoId: id,
-      },
-    });
-
-    await tx.productoImagen.deleteMany({
-      where: {
-        productoId: id,
-      },
-    });
-
-    await tx.producto.delete({
-      where: {
-        id,
-      },
-    });
+    await tx.variante.deleteMany({ where: { productoId: id } });
+    await tx.productoColeccion.deleteMany({ where: { productoId: id } });
+    await tx.productoImagen.deleteMany({ where: { productoId: id } });
+    await tx.producto.delete({ where: { id } });
   });
+
+  await Promise.all(imagenes.map((imagen) => eliminarDeCloudinary(imagen.url)));
 
   return NextResponse.json({ ok: true });
 }

@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const TIENDA_ID = "cmq67l6zl0002vw3os7n7qe30";
+import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const tienda = await prisma.tienda.findUnique({
-      where: {
-        id: TIENDA_ID,
-      },
-    });
+    const tienda = await obtenerTiendaDeSesion();
 
     if (!tienda) {
       return NextResponse.json(
@@ -31,22 +26,32 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const tiendaActual = await obtenerTiendaDeSesion();
+
+    if (!tiendaActual) {
+      return NextResponse.json(
+        { error: "Tienda no encontrada" },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
 
     const tienda = await prisma.tienda.update({
-      where: {
-        id: TIENDA_ID,
-      },
+      where: { id: tiendaActual.id },
       data: {
-  nombre: body.nombre,
-  descripcion: body.descripcion,
-  whatsapp: body.whatsapp,
-  instagram: body.instagram,
-  direccion: body.direccion,
-  logoUrl: body.logoUrl,
-  bannerUrl: body.bannerUrl,
-  colorTema: body.colorTema,
-},
+        nombre: body.nombre,
+        descripcion: body.descripcion,
+        whatsapp: body.whatsapp,
+        instagram: body.instagram,
+        direccion: body.direccion,
+        logoUrl: body.logoUrl,
+        bannerUrl: body.bannerUrl,
+        colorTema: body.colorTema,
+        ...(body.estiloCatalogo !== undefined && {
+          estiloCatalogo: body.estiloCatalogo,
+        }),
+      },
     });
 
     return NextResponse.json(tienda);
