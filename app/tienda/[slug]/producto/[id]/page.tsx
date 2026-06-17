@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
+import GaleriaProducto from "@/components/GaleriaProducto";
 
 type PageProps = {
   params: Promise<{
@@ -70,7 +71,6 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
   );
 
   const soldOut = producto.estado === "AGOTADO" || stockTotal === 0;
-  const imagenPrincipal = producto.imagenes[0];
   const nuevo = estilo.badges && esNuevo(producto.createdAt) && !soldOut;
   const destacado = estilo.badges && producto.destacado;
 
@@ -89,42 +89,16 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
         </Link>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <div className="group animar-entrada overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-900">
-            <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden bg-neutral-800">
-              {imagenPrincipal ? (
-                <img
-                  src={imagenPrincipal.url}
-                  alt={producto.nombre}
-                  className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
-                />
-              ) : (
-                <span className="text-neutral-500">Sin imagen</span>
-              )}
-
-              <div className="absolute left-4 top-4 flex flex-col gap-2">
-                {destacado && (
-                  <span className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold text-black shadow">
-                    {estilo.emojis ? "⭐ " : ""}Destacado
-                  </span>
-                )}
-                {nuevo && (
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-bold text-black shadow"
-                    style={{ backgroundColor: colorTema }}
-                  >
-                    {estilo.emojis ? "🔥 " : ""}Nuevo
-                  </span>
-                )}
-              </div>
-
-              {soldOut && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-                  <span className="animar-pop rounded-full border border-white px-6 py-3 text-xl font-bold">
-                    SOLD OUT
-                  </span>
-                </div>
-              )}
-            </div>
+          <div className="animar-entrada">
+            <GaleriaProducto
+              imagenes={producto.imagenes}
+              nombre={producto.nombre}
+              soldOut={soldOut}
+              destacado={destacado}
+              nuevo={nuevo}
+              emojis={estilo.emojis}
+              colorTema={colorTema}
+            />
           </div>
 
           <div className="animar-entrada space-y-6">
