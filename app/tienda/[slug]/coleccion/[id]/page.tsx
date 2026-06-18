@@ -51,6 +51,9 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                 where: { estado: { not: "ARCHIVADA" } },
                 orderBy: { createdAt: "asc" },
               },
+              componentes: {
+                include: { variante: { include: { producto: true } } },
+              },
             },
           },
         },
@@ -76,10 +79,11 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
 
   const colorTema = tienda.colorTema || "#ffffff";
   const estilo = configEstilo(tienda.estiloCatalogo);
+  const esPerfumes = tienda.tipo === "PERFUMES";
 
   const productos = coleccion.productos
     .map(({ producto }) => producto)
-    .filter((producto) => producto.estado !== "ARCHIVADO" && !producto.esSet);
+    .filter((producto) => producto.estado !== "ARCHIVADO");
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
@@ -116,6 +120,7 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {productos.map((producto, indice) => {
+              const esSetProd = producto.esSet;
               const variantesActivas = producto.variantes as VariantePublica[];
 
               const stockTotal = variantesActivas.reduce(
@@ -123,8 +128,12 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                 0
               );
 
-              const soldOut =
-                producto.estado === "AGOTADO" || stockTotal === 0;
+              const soldOut = esSetProd
+                ? producto.componentes.length === 0 ||
+                  producto.componentes.some(
+                    (c) => c.variante.stock < c.cantidad
+                  )
+                : producto.estado === "AGOTADO" || stockTotal === 0;
 
               const imagenPrincipal = producto.imagenes[0];
               const nuevo = estilo.badges && esNuevo(producto.createdAt);
@@ -133,12 +142,14 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
               const precios = producto.variantes.map((v) =>
                 Number(v.precio ?? producto.precio)
               );
-              const precioMin = precios.length
-                ? Math.min(...precios)
-                : Number(producto.precio);
-              const precioMax = precios.length
-                ? Math.max(...precios)
-                : Number(producto.precio);
+              const precioMin =
+                esSetProd || precios.length === 0
+                  ? Number(producto.precio)
+                  : Math.min(...precios);
+              const precioMax =
+                esSetProd || precios.length === 0
+                  ? Number(producto.precio)
+                  : Math.max(...precios);
 
               return (
                 <article
@@ -161,8 +172,12 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                         <span className="text-neutral-500">Sin imagen</span>
                       )}
 
-                      {/* Badges */}
                       <div className="absolute left-3 top-3 flex flex-col gap-2">
+                        {esSetProd && (
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-black shadow">
+                            {estilo.emojis ? "🎁 " : ""}Set
+                          </span>
+                        )}
                         {destacado && (
                           <span className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold text-black shadow">
                             {estilo.emojis ? "⭐ " : ""}Destacado
@@ -202,34 +217,51 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                       </p>
 
                       <div className="space-y-2">
-                        <p className="text-sm font-semibold text-neutral-300">
-                          Tallas
-                        </p>
-
-                        {variantesActivas.length === 0 ? (
-                          <p className="text-sm text-neutral-500">
-                            Sin tallas registradas
-                          </p>
+                        {esSetProd ? (
+                          <>
+                            <p className="text-sm font-semibold text-neutral-300">
+                              Incluye
+                            </p>
+                            <p className="text-sm text-neutral-400">
+                              {producto.componentes.length} decants en el
+                              paquete
+                            </p>
+                          </>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {variantesActivas.map((variante) => (
-                              <span
-                                key={variante.id}
-                                className="rounded-full px-3 py-1 text-xs font-semibold transition"
-                                style={{
-                                  backgroundColor:
-                                    variante.stock > 0 ? colorTema : "#262626",
-                                  color:
-                                    variante.stock > 0 ? "#000000" : "#737373",
-                                }}
-                              >
-                                {variante.talla}{" "}
-                                {variante.stock > 0
-                                  ? `(${variante.stock})`
-                                  : "(0)"}
-                              </span>
-                            ))}
-                          </div>
+                          <>
+                            <p className="text-sm font-semibold text-neutral-300">
+                              {esPerfumes ? "Presentaciones" : "Tallas"}
+                            </p>
+                            {variantesActivas.length === 0 ? (
+                              <p className="text-sm text-neutral-500">
+                                Sin {esPerfumes ? "presentaciones" : "tallas"}
+                              </p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {variantesActivas.map((variante) => (
+                                  <span
+                                    key={variante.id}
+                                    className="rounded-full px-3 py-1 text-xs font-semibold transition"
+                                    style={{
+                                      backgroundColor:
+                                        variante.stock > 0
+                                          ? colorTema
+                                          : "#262626",
+                                      color:
+                                        variante.stock > 0
+                                          ? "#000000"
+                                          : "#737373",
+                                    }}
+                                  >
+                                    {variante.talla}{" "}
+                                    {variante.stock > 0
+                                      ? `(${variante.stock})`
+                                      : "(0)"}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -239,7 +271,7 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                     <div className="px-5 pb-5">
                       <a
                         href={`https://wa.me/${tienda.whatsapp}?text=${encodeURIComponent(
-                          `Hola, me interesa el producto ${producto.nombre}`
+                          `Hola, me interesa ${producto.nombre}`
                         )}`}
                         target="_blank"
                         className="block rounded-xl px-4 py-3 text-center font-semibold text-black transition hover:scale-[1.02]"

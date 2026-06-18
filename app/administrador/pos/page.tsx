@@ -15,6 +15,7 @@ type Producto = {
   nombre: string;
   precio: string;
   estado: string;
+  esSet?: boolean;
   imagenes: { url: string }[];
   variantes: Variante[];
 };
@@ -72,7 +73,7 @@ export default function POSPage() {
   const cargarProductos = useCallback(async () => {
     const response = await fetch("/api/productos");
     const data: Producto[] = await response.json();
-    setProductos(data.filter((p) => p.estado !== "ARCHIVADO"));
+    setProductos(data.filter((p) => p.estado !== "ARCHIVADO" && !p.esSet));
   }, []);
 
   useEffect(() => {
