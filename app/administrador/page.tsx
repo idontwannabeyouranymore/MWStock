@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import ResumenHoy from "@/components/ResumenHoy";
+
+function fechaCorta(d: Date) {
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+}
 
 export default async function DashboardPage() {
   const tienda = await obtenerTiendaDeSesion();
@@ -54,6 +59,53 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  // Pendientes de tandas activas: el periodo actual de cada una.
+  const tandasActivas = await prisma.tanda.findMany({
+    where: { tiendaId: tienda.id, estado: "ACTIVA" },
+    include: {
+      participantes: {
+        include: { cliente: { select: { nombre: true } } },
+      },
+      periodos: {
+        orderBy: { numero: "asc" },
+        include: {
+          pagos: {
+            include: {
+              participante: {
+                include: { cliente: { select: { nombre: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const tandasPendientes = tandasActivas
+    .map((t) => {
+      // Primer periodo que no esté entregado o con pagos pendientes.
+      const periodo = t.periodos.find(
+        (p) => !p.entregado || p.pagos.some((x) => !x.pagado)
+      );
+      if (!periodo) return null;
+      const recibe =
+        t.participantes.find((pa) => pa.turno === periodo.numero)?.cliente
+          .nombre || "—";
+      const faltanPagar = periodo.pagos
+        .filter((x) => !x.pagado)
+        .map((x) => x.participante.cliente.nombre);
+      return {
+        id: t.id,
+        nombre: t.nombre,
+        periodoNumero: periodo.numero,
+        fecha: periodo.fecha,
+        recibe,
+        entregado: periodo.entregado,
+        faltanPagar,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
   const cards = [
     {
       titulo: esPerfumes ? "Perfumes" : "Productos",
@@ -86,6 +138,59 @@ export default async function DashboardPage() {
         </div>
 
         <ResumenHoy />
+
+        {tandasPendientes.length > 0 && (
+          <section className="rounded-2xl border border-amber-800 bg-amber-950/20 p-5">
+            <h2 className="text-xl font-semibold">Pendientes de tandas</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Lo que sigue en tus tandas activas.
+            </p>
+            <div className="mt-4 space-y-3">
+              {tandasPendientes.map((t) => (
+                <div
+                  key={t.id}
+                  className="rounded-xl border border-neutral-800 bg-neutral-950 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold">
+                      {t.nombre}{" "}
+                      <span className="font-normal text-neutral-500">
+                        · Periodo {t.periodoNumero} · {fechaCorta(t.fecha)}
+                      </span>
+                    </p>
+                    <Link
+                      href={`/administrador/tandas/${t.id}`}
+                      className="text-sm text-amber-400 hover:underline"
+                    >
+                      Abrir →
+                    </Link>
+                  </div>
+                  <p className="mt-2 text-sm">
+                    {t.entregado ? (
+                      <span className="text-green-400">
+                        ✓ Entregado a {t.recibe}
+                      </span>
+                    ) : (
+                      <span>
+                        Entregar a{" "}
+                        <span className="font-semibold text-amber-400">
+                          {t.recibe}
+                        </span>
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    {t.faltanPagar.length === 0
+                      ? "Todos pagaron este periodo."
+                      : `Faltan de pagar (${t.faltanPagar.length}): ${t.faltanPagar.join(
+                          ", "
+                        )}`}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map((card) => (
