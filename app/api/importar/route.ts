@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
       const marca = norm(f.marca);
       const categoria = norm(f.categoria) || "Sin categoría";
-      const key = `${nombre.toLowerCase()}||${marca.toLowerCase()}`;
+      const key = `${nombre.toLowerCase()}||${marca.toLowerCase()}||${categoria.toLowerCase()}`;
 
       if (!grupos.has(key)) {
         grupos.set(key, { nombre, marca, categoria, variantes: [] });
@@ -108,12 +108,16 @@ export async function POST(request: Request) {
 
     for (const grupo of grupos.values()) {
       try {
-        // Evita duplicados: mismo nombre (+ marca) en la tienda.
+        const coleccionId = await obtenerColeccion(grupo.categoria);
+
+        // Evita duplicados: mismo nombre (+ marca) dentro de la misma colección.
+        // Así un perfume puede existir como decant y como completo por separado.
         const yaExiste = await prisma.producto.findFirst({
           where: {
             tiendaId: tienda.id,
             nombre: grupo.nombre,
             marca: grupo.marca || null,
+            colecciones: { some: { coleccionId } },
           },
         });
         if (yaExiste) {
@@ -121,7 +125,6 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const coleccionId = await obtenerColeccion(grupo.categoria);
         const precioBase = Math.min(...grupo.variantes.map((v) => v.precio));
 
         await prisma.producto.create({
