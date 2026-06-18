@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import ResumenHoy from "@/components/ResumenHoy";
 
 export default async function DashboardPage() {
   const tienda = await obtenerTiendaDeSesion();
@@ -9,33 +10,31 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const esPerfumes = tienda.tipo === "PERFUMES";
+
   const [
-    totalColecciones,
     totalProductos,
+    totalSets,
     productosAgotados,
-    totalVariantes,
+    totalPresentaciones,
     stockTotal,
-    movimientosRecientes,
+    stockBajo,
   ] = await Promise.all([
-    prisma.coleccion.count({
-      where: { tiendaId: tienda.id, estado: { not: "ARCHIVADA" } },
-    }),
-
     prisma.producto.count({
-      where: { tiendaId: tienda.id, estado: { not: "ARCHIVADO" } },
+      where: { tiendaId: tienda.id, esSet: false, estado: { not: "ARCHIVADO" } },
     }),
-
     prisma.producto.count({
-      where: { tiendaId: tienda.id, estado: "AGOTADO" },
+      where: { tiendaId: tienda.id, esSet: true, estado: { not: "ARCHIVADO" } },
     }),
-
+    prisma.producto.count({
+      where: { tiendaId: tienda.id, esSet: false, estado: "AGOTADO" },
+    }),
     prisma.variante.count({
       where: {
         producto: { tiendaId: tienda.id },
         estado: { not: "ARCHIVADA" },
       },
     }),
-
     prisma.variante.aggregate({
       where: {
         producto: { tiendaId: tienda.id },
@@ -43,46 +42,35 @@ export default async function DashboardPage() {
       },
       _sum: { stock: true },
     }),
-
-    prisma.movimientoInventario.findMany({
-      where: { variante: { producto: { tiendaId: tienda.id } } },
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: {
-        variante: {
-          include: {
-            producto: true,
-          },
-        },
+    prisma.variante.findMany({
+      where: {
+        producto: { tiendaId: tienda.id },
+        estado: { not: "ARCHIVADA" },
+        stock: { lte: 3 },
       },
+      include: { producto: { select: { nombre: true } } },
+      orderBy: { stock: "asc" },
+      take: 20,
     }),
   ]);
 
   const cards = [
     {
-      titulo: "Colecciones",
-      valor: totalColecciones,
-      descripcion: "Colecciones activas u ocultas",
-    },
-    {
-      titulo: "Productos",
+      titulo: esPerfumes ? "Perfumes" : "Productos",
       valor: totalProductos,
-      descripcion: "Productos no archivados",
     },
+    ...(esPerfumes ? [{ titulo: "Sets", valor: totalSets }] : []),
     {
       titulo: "Agotados",
       valor: productosAgotados,
-      descripcion: "Productos en SOLD OUT",
     },
     {
-      titulo: "Tallas",
-      valor: totalVariantes,
-      descripcion: "Tallas registradas",
+      titulo: esPerfumes ? "Presentaciones" : "Tallas",
+      valor: totalPresentaciones,
     },
     {
       titulo: "Stock total",
       valor: stockTotal._sum.stock ?? 0,
-      descripcion: "Piezas disponibles en inventario",
     },
   ];
 
@@ -93,69 +81,61 @@ export default async function DashboardPage() {
           <p className="text-sm uppercase tracking-[0.3em] text-neutral-500">
             Administrador
           </p>
-
           <h1 className="mt-2 text-4xl font-bold">Dashboard</h1>
-
-          <p className="mt-3 text-neutral-400">
-            Resumen general de {tienda.nombre}.
-          </p>
+          <p className="mt-3 text-neutral-400">Resumen de {tienda.nombre}.</p>
         </div>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <ResumenHoy />
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map((card) => (
             <article
               key={card.titulo}
               className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
             >
               <p className="text-sm text-neutral-400">{card.titulo}</p>
-
               <p className="mt-3 text-4xl font-bold">{card.valor}</p>
-
-              <p className="mt-2 text-sm text-neutral-500">
-                {card.descripcion}
-              </p>
             </article>
           ))}
         </section>
 
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-          <h2 className="text-xl font-semibold">Movimientos recientes</h2>
+          <h2 className="text-xl font-semibold">
+            Stock bajo (3 o menos)
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            {esPerfumes ? "Presentaciones" : "Tallas"} por reabastecer.
+          </p>
 
-          {movimientosRecientes.length === 0 ? (
+          {stockBajo.length === 0 ? (
             <p className="mt-4 text-neutral-400">
-              Todavía no hay movimientos de inventario.
+              Todo bien, no hay stock bajo.
             </p>
           ) : (
-            <div className="mt-4 space-y-3">
-              {movimientosRecientes.map((movimiento) => (
-                <article
-                  key={movimiento.id}
-                  className="rounded-xl border border-neutral-800 bg-neutral-950 p-4"
+            <div className="mt-4 grid gap-2">
+              {stockBajo.map((variante) => (
+                <div
+                  key={variante.id}
+                  className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3"
                 >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-semibold">
-                        {movimiento.variante.producto.nombre}
-                      </p>
-
-                      <p className="text-sm text-neutral-400">
-                        Talla {movimiento.variante.talla} ·{" "}
-                        {movimiento.variante.color || "Sin color"}
-                      </p>
-
-                      <p className="text-sm text-neutral-500">
-                        {movimiento.nota || "Sin nota"}
-                      </p>
-                    </div>
-
-                    <div className="text-sm text-neutral-300">
-                      <p>Tipo: {movimiento.tipo}</p>
-                      <p>
-                        {movimiento.stockAnterior} → {movimiento.stockNuevo}
-                      </p>
-                    </div>
-                  </div>
-                </article>
+                  <p className="text-sm">
+                    <span className="font-semibold">
+                      {variante.producto.nombre}
+                    </span>{" "}
+                    <span className="text-neutral-400">{variante.talla}</span>
+                  </p>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      variante.stock === 0
+                        ? "bg-red-900/50 text-red-400"
+                        : "bg-yellow-900/50 text-yellow-300"
+                    }`}
+                  >
+                    {variante.stock === 0
+                      ? "Agotado"
+                      : `${variante.stock} disponible(s)`}
+                  </span>
+                </div>
               ))}
             </div>
           )}
