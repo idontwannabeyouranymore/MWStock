@@ -39,11 +39,13 @@ export default function AdminSidebar() {
   // Las perfumerías ven el menú "Sets" después de "Productos".
   const linksMostrar =
     tipo === "PERFUMES"
-      ? links.flatMap((l) =>
-          l.href === "/administrador/productos"
-            ? [l, { href: "/administrador/sets", label: "Sets" }]
-            : [l]
-        )
+      ? links.flatMap((l) => {
+          if (l.href === "/administrador/productos")
+            return [l, { href: "/administrador/sets", label: "Sets" }];
+          if (l.href === "/administrador/clientes")
+            return [l, { href: "/administrador/tandas", label: "Tandas" }];
+          return [l];
+        })
       : links;
 
   return (
