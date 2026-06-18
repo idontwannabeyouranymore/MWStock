@@ -1,16 +1,33 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
 
 type ItemEntrada = {
-  varianteId: string;
+  tipo?: "variante" | "set";
+  varianteId?: string;
+  setId?: string;
   cantidad: number;
 };
+
+// Recalcula si un producto sigue ACTIVO o queda AGOTADO según sus variantes.
+async function recalcularEstadoProducto(
+  tx: Prisma.TransactionClient,
+  productoId: string
+) {
+  const variantes = await tx.variante.findMany({
+    where: { productoId, estado: { not: "ARCHIVADA" } },
+  });
+  const hayStock = variantes.some((v) => v.stock > 0);
+  await tx.producto.update({
+    where: { id: productoId },
+    data: { estado: hayStock ? "ACTIVO" : "AGOTADO" },
+  });
+}
 
 export async function GET() {
   try {
     const tienda = await obtenerTiendaDeSesion();
-
     if (!tienda) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
@@ -34,13 +51,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const tienda = await obtenerTiendaDeSesion();
-
     if (!tienda) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     const body = await request.json();
-
     const items: ItemEntrada[] = Array.isArray(body.items) ? body.items : [];
     const metodoPago: "EFECTIVO" | "TARJETA" | "TRANSFERENCIA" =
       body.metodoPago || "EFECTIVO";
@@ -57,7 +72,7 @@ export async function POST(request: Request) {
     const venta = await prisma.$transaction(async (tx) => {
       let total = 0;
       const itemsCrear: {
-        varianteId: string;
+        varianteId: string | null;
         productoNombre: string;
         talla: string;
         cantidad: number;
@@ -66,35 +81,96 @@ export async function POST(request: Request) {
       }[] = [];
 
       for (const item of items) {
-        if (!item.varianteId || !item.cantidad || item.cantidad <= 0) {
-          throw new Error("Hay un artículo inválido en el carrito");
+        const cantidad = Number(item.cantidad) || 0;
+        if (cantidad <= 0) {
+          throw new Error("Hay un artículo con cantidad inválida");
         }
 
+        // === SET (paquete) ===
+        if (item.tipo === "set") {
+          const set = await tx.producto.findUnique({
+            where: { id: item.setId },
+            include: { componentes: true },
+          });
+
+          if (!set || set.tiendaId !== tienda.id || !set.esSet) {
+            throw new Error("Un set ya no existe");
+          }
+          if (set.componentes.length === 0) {
+            throw new Error(`El set "${set.nombre}" no tiene componentes`);
+          }
+
+          for (const comp of set.componentes) {
+            const necesario = comp.cantidad * cantidad;
+            const v = await tx.variante.findUnique({
+              where: { id: comp.varianteId },
+            });
+            if (!v) {
+              throw new Error("Un componente del set ya no existe");
+            }
+            if (v.stock < necesario) {
+              throw new Error(`Stock insuficiente para el set "${set.nombre}"`);
+            }
+            const stockNuevo = v.stock - necesario;
+            await tx.variante.update({
+              where: { id: v.id },
+              data: {
+                stock: stockNuevo,
+                estado: stockNuevo > 0 ? "ACTIVA" : "AGOTADA",
+              },
+            });
+            await tx.movimientoInventario.create({
+              data: {
+                varianteId: v.id,
+                tipo: "VENTA",
+                cantidad: necesario,
+                stockAnterior: v.stock,
+                stockNuevo,
+                nota: `Venta set: ${set.nombre}`,
+              },
+            });
+            await recalcularEstadoProducto(tx, v.productoId);
+          }
+
+          const precioUnitario = Number(set.precio);
+          const subtotal = precioUnitario * cantidad;
+          total += subtotal;
+          itemsCrear.push({
+            varianteId: null,
+            productoNombre: set.nombre,
+            talla: "Set",
+            cantidad,
+            precioUnitario,
+            subtotal,
+          });
+          continue;
+        }
+
+        // === VARIANTE (decant / talla suelta) ===
         const variante = await tx.variante.findUnique({
           where: { id: item.varianteId },
           include: { producto: true },
         });
 
         if (!variante) {
-          throw new Error("Una de las variantes ya no existe");
+          throw new Error("Una de las presentaciones ya no existe");
         }
-
         if (variante.producto.tiendaId !== tienda.id) {
           throw new Error("Un artículo no pertenece a tu tienda");
         }
-
-        if (variante.stock < item.cantidad) {
+        if (variante.stock < cantidad) {
           throw new Error(
-            `Stock insuficiente de ${variante.producto.nombre} talla ${variante.talla}`
+            `Stock insuficiente de ${variante.producto.nombre} ${variante.talla}`
           );
         }
 
-        const precioUnitario = Number(variante.producto.precio);
-        const subtotal = precioUnitario * item.cantidad;
+        const precioUnitario = Number(
+          variante.precio ?? variante.producto.precio
+        );
+        const subtotal = precioUnitario * cantidad;
         total += subtotal;
 
-        const stockNuevo = variante.stock - item.cantidad;
-
+        const stockNuevo = variante.stock - cantidad;
         await tx.variante.update({
           where: { id: variante.id },
           data: {
@@ -102,36 +178,23 @@ export async function POST(request: Request) {
             estado: stockNuevo > 0 ? "ACTIVA" : "AGOTADA",
           },
         });
-
         await tx.movimientoInventario.create({
           data: {
             varianteId: variante.id,
             tipo: "VENTA",
-            cantidad: item.cantidad,
+            cantidad,
             stockAnterior: variante.stock,
             stockNuevo,
             nota: "Venta POS",
           },
         });
-
-        // Recalcular estado del producto.
-        const variantesProducto = await tx.variante.findMany({
-          where: {
-            productoId: variante.productoId,
-            estado: { not: "ARCHIVADA" },
-          },
-        });
-        const hayStock = variantesProducto.some((v) => v.stock > 0);
-        await tx.producto.update({
-          where: { id: variante.productoId },
-          data: { estado: hayStock ? "ACTIVO" : "AGOTADO" },
-        });
+        await recalcularEstadoProducto(tx, variante.productoId);
 
         itemsCrear.push({
           varianteId: variante.id,
           productoNombre: variante.producto.nombre,
           talla: variante.talla,
-          cantidad: item.cantidad,
+          cantidad,
           precioUnitario,
           subtotal,
         });

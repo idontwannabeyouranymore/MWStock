@@ -7,6 +7,7 @@ type Variante = {
   talla: string;
   color: string | null;
   stock: number;
+  precio: string | null;
   estado: string;
 };
 
@@ -20,8 +21,17 @@ type Producto = {
   variantes: Variante[];
 };
 
+type SetVenta = {
+  id: string;
+  nombre: string;
+  precio: string;
+  imagenes: { url: string }[];
+  componentes: { cantidad: number; variante: { stock: number } }[];
+};
+
 type ItemCarrito = {
-  varianteId: string;
+  tipo: "variante" | "set";
+  refId: string;
   productoNombre: string;
   talla: string;
   precio: number;
@@ -55,8 +65,16 @@ const METODOS = [
   { valor: "TRANSFERENCIA", etiqueta: "Transferencia" },
 ];
 
+function maxDeSet(set: SetVenta) {
+  if (set.componentes.length === 0) return 0;
+  return Math.min(
+    ...set.componentes.map((c) => Math.floor(c.variante.stock / c.cantidad))
+  );
+}
+
 export default function POSPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [sets, setSets] = useState<SetVenta[]>([]);
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
 
   const [busqueda, setBusqueda] = useState("");
@@ -76,38 +94,41 @@ export default function POSPage() {
     setProductos(data.filter((p) => p.estado !== "ARCHIVADO" && !p.esSet));
   }, []);
 
+  const cargarSets = useCallback(async () => {
+    const response = await fetch("/api/sets");
+    if (!response.ok) return;
+    const data: SetVenta[] = await response.json();
+    if (Array.isArray(data)) setSets(data);
+  }, []);
+
   useEffect(() => {
     cargarProductos();
+    cargarSets();
     fetch("/api/tienda")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
       })
       .catch(() => {});
-  }, [cargarProductos]);
+  }, [cargarProductos, cargarSets]);
 
   function agregarAlCarrito(producto: Producto, variante: Variante) {
     setCarrito((actual) => {
-      const existente = actual.find((i) => i.varianteId === variante.id);
-
+      const existente = actual.find((i) => i.refId === variante.id);
       if (existente) {
-        if (existente.cantidad >= variante.stock) {
-          return actual;
-        }
+        if (existente.cantidad >= variante.stock) return actual;
         return actual.map((i) =>
-          i.varianteId === variante.id
-            ? { ...i, cantidad: i.cantidad + 1 }
-            : i
+          i.refId === variante.id ? { ...i, cantidad: i.cantidad + 1 } : i
         );
       }
-
       return [
         ...actual,
         {
-          varianteId: variante.id,
+          tipo: "variante",
+          refId: variante.id,
           productoNombre: producto.nombre,
           talla: variante.talla,
-          precio: Number(producto.precio),
+          precio: Number(variante.precio ?? producto.precio),
           cantidad: 1,
           stock: variante.stock,
         },
@@ -115,11 +136,37 @@ export default function POSPage() {
     });
   }
 
-  function cambiarCantidad(varianteId: string, delta: number) {
+  function agregarSetAlCarrito(set: SetVenta) {
+    const maxSets = maxDeSet(set);
+    if (maxSets < 1) return;
+    setCarrito((actual) => {
+      const existente = actual.find((i) => i.refId === set.id);
+      if (existente) {
+        if (existente.cantidad >= maxSets) return actual;
+        return actual.map((i) =>
+          i.refId === set.id ? { ...i, cantidad: i.cantidad + 1 } : i
+        );
+      }
+      return [
+        ...actual,
+        {
+          tipo: "set",
+          refId: set.id,
+          productoNombre: set.nombre,
+          talla: "Set",
+          precio: Number(set.precio),
+          cantidad: 1,
+          stock: maxSets,
+        },
+      ];
+    });
+  }
+
+  function cambiarCantidad(refId: string, delta: number) {
     setCarrito((actual) =>
       actual
         .map((i) => {
-          if (i.varianteId !== varianteId) return i;
+          if (i.refId !== refId) return i;
           const nueva = i.cantidad + delta;
           return { ...i, cantidad: Math.min(Math.max(nueva, 0), i.stock) };
         })
@@ -127,8 +174,8 @@ export default function POSPage() {
     );
   }
 
-  function quitarDelCarrito(varianteId: string) {
-    setCarrito((actual) => actual.filter((i) => i.varianteId !== varianteId));
+  function quitarDelCarrito(refId: string) {
+    setCarrito((actual) => actual.filter((i) => i.refId !== refId));
   }
 
   const total = useMemo(
@@ -138,32 +185,29 @@ export default function POSPage() {
 
   const recibido = Number(montoRecibido) || 0;
   const cambio =
-    metodoPago === "EFECTIVO" && montoRecibido !== ""
-      ? recibido - total
-      : null;
+    metodoPago === "EFECTIVO" && montoRecibido !== "" ? recibido - total : null;
 
   async function cobrar() {
     if (carrito.length === 0) {
       alert("El carrito está vacío");
       return;
     }
-
     if (metodoPago === "EFECTIVO" && montoRecibido !== "" && recibido < total) {
       alert("El monto recibido es menor al total");
       return;
     }
 
     setProcesando(true);
-
     try {
       const response = await fetch("/api/ventas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: carrito.map((i) => ({
-            varianteId: i.varianteId,
-            cantidad: i.cantidad,
-          })),
+          items: carrito.map((i) =>
+            i.tipo === "set"
+              ? { tipo: "set", setId: i.refId, cantidad: i.cantidad }
+              : { tipo: "variante", varianteId: i.refId, cantidad: i.cantidad }
+          ),
           metodoPago,
           montoRecibido: metodoPago === "EFECTIVO" ? montoRecibido : null,
           clienteNombre,
@@ -172,7 +216,6 @@ export default function POSPage() {
       });
 
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || "No se pudo registrar la venta");
       }
@@ -184,6 +227,7 @@ export default function POSPage() {
       setClienteTelefono("");
       setMetodoPago("EFECTIVO");
       await cargarProductos();
+      await cargarSets();
     } catch (error) {
       console.error(error);
       alert(error instanceof Error ? error.message : "Error al cobrar");
@@ -211,7 +255,6 @@ export default function POSPage() {
         2
       )}\nCambio: $${Number(venta.cambio || 0).toFixed(2)}`;
     }
-
     texto += `\n\n¡Gracias por tu compra!`;
     return texto;
   }
@@ -227,6 +270,9 @@ export default function POSPage() {
   const productosFiltrados = productos.filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
+  const setsFiltrados = sets.filter((s) =>
+    s.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
 
   // --- Pantalla de ticket tras cobrar ---
   if (ventaHecha) {
@@ -234,7 +280,9 @@ export default function POSPage() {
       <main className="min-h-screen bg-neutral-950 px-6 py-8 text-white">
         <section className="mx-auto max-w-md space-y-6">
           <div className="rounded-2xl border border-green-700 bg-green-950/30 p-6 text-center">
-            <p className="text-2xl font-bold text-green-400">¡Venta registrada!</p>
+            <p className="text-2xl font-bold text-green-400">
+              ¡Venta registrada!
+            </p>
             <p className="mt-1 text-neutral-300">
               Total cobrado: ${Number(ventaHecha.total).toFixed(2)}
             </p>
@@ -242,7 +290,6 @@ export default function POSPage() {
 
           <div className="space-y-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
             <h2 className="text-lg font-semibold">Ticket</h2>
-
             <div className="space-y-2">
               {ventaHecha.items.map((item, indice) => (
                 <div
@@ -256,7 +303,6 @@ export default function POSPage() {
                 </div>
               ))}
             </div>
-
             <div className="border-t border-neutral-800 pt-3 text-sm">
               <div className="flex justify-between font-bold">
                 <span>Total</span>
@@ -290,7 +336,6 @@ export default function POSPage() {
                 Enviar ticket por WhatsApp
               </button>
             )}
-
             <button
               onClick={() => setVentaHecha(null)}
               className="rounded-xl bg-white px-5 py-3 font-semibold text-black"
@@ -315,16 +360,67 @@ export default function POSPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Productos */}
+          {/* Productos y sets */}
           <div className="space-y-4">
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar producto..."
+              placeholder="Buscar..."
               className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
             />
 
-            {productosFiltrados.length === 0 ? (
+            {setsFiltrados.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+                  Sets
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {setsFiltrados.map((set) => {
+                    const max = maxDeSet(set);
+                    const agotado = max < 1;
+                    return (
+                      <article
+                        key={set.id}
+                        className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
+                      >
+                        <div className="flex gap-3">
+                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-800">
+                            {set.imagenes[0] ? (
+                              <img
+                                src={set.imagenes[0].url}
+                                alt={set.nombre}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold leading-tight">
+                              {set.nombre}
+                            </h3>
+                            <p className="text-sm text-neutral-400">
+                              ${Number(set.precio).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          disabled={agotado}
+                          onClick={() => agregarSetAlCarrito(set)}
+                          className={`mt-3 w-full rounded-lg px-3 py-2 text-sm font-semibold ${
+                            agotado
+                              ? "cursor-not-allowed bg-neutral-800 text-neutral-600"
+                              : "bg-white text-black hover:bg-neutral-200"
+                          }`}
+                        >
+                          {agotado ? "Agotado" : `Agregar set (${max} disp.)`}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {productosFiltrados.length === 0 && setsFiltrados.length === 0 ? (
               <p className="rounded-xl border border-neutral-800 p-4 text-neutral-400">
                 No hay productos.
               </p>
@@ -334,7 +430,6 @@ export default function POSPage() {
                   const tallas = producto.variantes.filter(
                     (v) => v.estado !== "ARCHIVADA"
                   );
-
                   return (
                     <article
                       key={producto.id}
@@ -354,15 +449,15 @@ export default function POSPage() {
                           <h3 className="font-semibold leading-tight">
                             {producto.nombre}
                           </h3>
-                          <p className="text-sm text-neutral-400">
-                            ${Number(producto.precio).toFixed(2)}
-                          </p>
                         </div>
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         {tallas.map((variante) => {
                           const agotada = variante.stock <= 0;
+                          const precioV = Number(
+                            variante.precio ?? producto.precio
+                          );
                           return (
                             <button
                               key={variante.id}
@@ -370,13 +465,13 @@ export default function POSPage() {
                               onClick={() =>
                                 agregarAlCarrito(producto, variante)
                               }
-                              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                              className={`rounded-lg px-3 py-2 text-left text-sm font-semibold ${
                                 agotada
                                   ? "cursor-not-allowed bg-neutral-800 text-neutral-600"
                                   : "bg-white text-black hover:bg-neutral-200"
                               }`}
                             >
-                              {variante.talla}{" "}
+                              {variante.talla} · ${precioV.toFixed(0)}{" "}
                               <span className="text-xs font-normal">
                                 ({variante.stock})
                               </span>
@@ -397,13 +492,13 @@ export default function POSPage() {
 
             {carrito.length === 0 ? (
               <p className="text-sm text-neutral-500">
-                Toca una talla para agregar productos.
+                Toca un producto o set para agregarlo.
               </p>
             ) : (
               <div className="space-y-3">
                 {carrito.map((item) => (
                   <div
-                    key={item.varianteId}
+                    key={`${item.tipo}-${item.refId}`}
                     className="rounded-xl border border-neutral-800 bg-neutral-950 p-3"
                   >
                     <div className="flex justify-between gap-2">
@@ -414,7 +509,7 @@ export default function POSPage() {
                         </span>
                       </p>
                       <button
-                        onClick={() => quitarDelCarrito(item.varianteId)}
+                        onClick={() => quitarDelCarrito(item.refId)}
                         className="text-xs text-red-400 hover:text-red-300"
                       >
                         Quitar
@@ -424,23 +519,20 @@ export default function POSPage() {
                     <div className="mt-2 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() =>
-                            cambiarCantidad(item.varianteId, -1)
-                          }
+                          onClick={() => cambiarCantidad(item.refId, -1)}
                           className="h-8 w-8 rounded-lg bg-neutral-800 font-bold"
                         >
                           −
                         </button>
                         <span className="w-6 text-center">{item.cantidad}</span>
                         <button
-                          onClick={() => cambiarCantidad(item.varianteId, 1)}
+                          onClick={() => cambiarCantidad(item.refId, 1)}
                           disabled={item.cantidad >= item.stock}
                           className="h-8 w-8 rounded-lg bg-neutral-800 font-bold disabled:opacity-40"
                         >
                           +
                         </button>
                       </div>
-
                       <p className="font-semibold">
                         ${(item.precio * item.cantidad).toFixed(2)}
                       </p>
@@ -455,7 +547,6 @@ export default function POSPage() {
               <span>${total.toFixed(2)}</span>
             </div>
 
-            {/* Método de pago */}
             <div className="space-y-2">
               <label className="text-sm text-neutral-300">Método de pago</label>
               <div className="grid grid-cols-3 gap-2">
@@ -502,7 +593,6 @@ export default function POSPage() {
               </div>
             )}
 
-            {/* Cliente opcional */}
             <div className="space-y-2 border-t border-neutral-800 pt-3">
               <label className="text-sm text-neutral-300">
                 Cliente (opcional)
