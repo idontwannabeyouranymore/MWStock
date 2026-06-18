@@ -11,6 +11,7 @@ const links = [
   { href: "/administrador/productos", label: "Productos" },
   { href: "/administrador/inventario", label: "Inventario" },
   { href: "/administrador/ventas", label: "Ventas" },
+  { href: "/administrador/clientes", label: "Clientes" },
   { href: "/administrador/qr", label: "Código QR" },
   { href: "/administrador/configuracion", label: "Configuración" },
   { href: "/administrador/cuenta", label: "Mi cuenta" },

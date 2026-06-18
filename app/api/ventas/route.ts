@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const items: ItemEntrada[] = Array.isArray(body.items) ? body.items : [];
-    const metodoPago: "EFECTIVO" | "TARJETA" | "TRANSFERENCIA" =
+    const metodoPago: "EFECTIVO" | "TARJETA" | "TRANSFERENCIA" | "FIADO" =
       body.metodoPago || "EFECTIVO";
     const clienteNombre = body.clienteNombre?.trim() || null;
     const clienteTelefono = body.clienteTelefono?.trim() || null;
@@ -65,6 +65,28 @@ export async function POST(request: Request) {
     if (items.length === 0) {
       return NextResponse.json(
         { error: "El carrito está vacío" },
+        { status: 400 }
+      );
+    }
+
+    // Cliente (obligatorio para fiado).
+    let cliente: { id: string; nombre: string; telefono: string | null } | null =
+      null;
+    if (body.clienteId) {
+      const c = await prisma.cliente.findUnique({
+        where: { id: body.clienteId },
+      });
+      if (!c || c.tiendaId !== tienda.id) {
+        return NextResponse.json(
+          { error: "Cliente no encontrado" },
+          { status: 404 }
+        );
+      }
+      cliente = { id: c.id, nombre: c.nombre, telefono: c.telefono };
+    }
+    if (metodoPago === "FIADO" && !cliente) {
+      return NextResponse.json(
+        { error: "El fiado requiere seleccionar un cliente" },
         { status: 400 }
       );
     }
@@ -200,30 +222,67 @@ export async function POST(request: Request) {
         });
       }
 
-      const montoRecibido =
-        metodoPago === "EFECTIVO" &&
+      const tieneMonto =
         body.montoRecibido !== undefined &&
         body.montoRecibido !== null &&
-        body.montoRecibido !== ""
+        body.montoRecibido !== "";
+
+      // EFECTIVO: monto recibido + cambio. FIADO: enganche (sin cambio).
+      const montoRecibido =
+        (metodoPago === "EFECTIVO" || metodoPago === "FIADO") && tieneMonto
           ? Number(body.montoRecibido)
           : null;
 
       const cambio =
-        montoRecibido !== null ? Math.max(0, montoRecibido - total) : null;
+        metodoPago === "EFECTIVO" && montoRecibido !== null
+          ? Math.max(0, montoRecibido - total)
+          : null;
 
-      return tx.venta.create({
+      const venta = await tx.venta.create({
         data: {
           total,
           metodoPago,
           montoRecibido,
           cambio,
-          clienteNombre,
-          clienteTelefono,
+          clienteNombre: cliente ? cliente.nombre : clienteNombre,
+          clienteTelefono: cliente ? cliente.telefono : clienteTelefono,
           tiendaId: tienda.id,
+          clienteId: cliente ? cliente.id : null,
           items: { create: itemsCrear },
         },
         include: { items: true },
       });
+
+      // Si es fiado, genera la deuda (descontando el enganche si lo hubo).
+      if (metodoPago === "FIADO" && cliente) {
+        const enganche =
+          montoRecibido && montoRecibido > 0
+            ? Math.min(montoRecibido, total)
+            : 0;
+        const saldo = Number((total - enganche).toFixed(2));
+        const deuda = await tx.deuda.create({
+          data: {
+            concepto: `Venta a crédito (${itemsCrear.length} artículo(s))`,
+            monto: total,
+            saldo,
+            estado: saldo <= 0 ? "PAGADA" : "PENDIENTE",
+            tiendaId: tienda.id,
+            clienteId: cliente.id,
+            ventaId: venta.id,
+          },
+        });
+        if (enganche > 0) {
+          await tx.abono.create({
+            data: {
+              monto: enganche,
+              nota: "Enganche en la venta",
+              deudaId: deuda.id,
+            },
+          });
+        }
+      }
+
+      return venta;
     });
 
     return NextResponse.json(venta, { status: 201 });

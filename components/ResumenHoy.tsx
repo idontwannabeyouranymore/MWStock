@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-type Venta = { total: string; createdAt: string };
+type Venta = {
+  total: string;
+  createdAt: string;
+  metodoPago: string;
+  montoRecibido: string | null;
+};
 
 function esHoy(fechaIso: string) {
   const f = new Date(fechaIso);
@@ -26,7 +31,17 @@ export default function ResumenHoy() {
         const hoy = Array.isArray(data)
           ? data.filter((v) => esHoy(v.createdAt))
           : [];
-        setDinero(hoy.reduce((s, v) => s + Number(v.total), 0));
+        // En fiado solo entra el enganche; en lo demás, el total.
+        setDinero(
+          hoy.reduce(
+            (s, v) =>
+              s +
+              (v.metodoPago === "FIADO"
+                ? Number(v.montoRecibido || 0)
+                : Number(v.total)),
+            0
+          )
+        );
         setConteo(hoy.length);
       })
       .catch(() => {})

@@ -78,6 +78,8 @@ model Tienda {
   colecciones Coleccion[]
   productos   Producto[]
   ventas      Venta[]
+  clientes    Cliente[]
+  deudas      Deuda[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -218,6 +220,69 @@ enum MetodoPago {
   EFECTIVO
   TARJETA
   TRANSFERENCIA
+  FIADO
+}
+
+enum EstadoDeuda {
+  PENDIENTE
+  PAGADA
+}
+
+model Cliente {
+  id        String   @id @default(cuid())
+  nombre    String
+  telefono  String?
+  nota      String?
+
+  tiendaId  String
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id])
+
+  ventas    Venta[]
+  deudas    Deuda[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tiendaId])
+}
+
+model Deuda {
+  id        String      @id @default(cuid())
+  concepto  String
+  monto     Decimal     @db.Decimal(10, 2)
+  saldo     Decimal     @db.Decimal(10, 2)
+  estado    EstadoDeuda @default(PENDIENTE)
+
+  tiendaId  String
+  tienda    Tienda      @relation(fields: [tiendaId], references: [id])
+
+  clienteId String
+  cliente   Cliente     @relation(fields: [clienteId], references: [id])
+
+  ventaId   String?     @unique
+  venta     Venta?      @relation(fields: [ventaId], references: [id])
+
+  abonos    Abono[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tiendaId])
+  @@index([clienteId])
+  @@index([estado])
+}
+
+model Abono {
+  id        String   @id @default(cuid())
+  monto     Decimal  @db.Decimal(10, 2)
+  nota      String?
+
+  deudaId   String
+  deuda     Deuda    @relation(fields: [deudaId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([deudaId])
 }
 
 model Venta {
@@ -232,11 +297,17 @@ model Venta {
   tiendaId        String
   tienda          Tienda     @relation(fields: [tiendaId], references: [id])
 
+  clienteId       String?
+  cliente         Cliente?   @relation(fields: [clienteId], references: [id])
+
+  deuda           Deuda?
+
   items           VentaItem[]
 
   createdAt       DateTime   @default(now())
 
   @@index([tiendaId])
+  @@index([clienteId])
   @@index([createdAt])
 }
 
