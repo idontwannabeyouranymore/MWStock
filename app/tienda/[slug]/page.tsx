@@ -60,6 +60,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       imagenes: { orderBy: { orden: "asc" }, take: 1 },
       variantes: { where: { estado: { not: "ARCHIVADA" } } },
       componentes: { include: { variante: true } },
+      colecciones: { select: { coleccionId: true } },
     },
     orderBy: { nombre: "asc" },
   });
@@ -89,6 +90,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       precioMin,
       precioMax,
       esSet: p.esSet,
+      coleccionIds: p.colecciones.map((c) => c.coleccionId),
     };
   });
 
@@ -185,6 +187,10 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
         <div className="mb-10">
           <BuscadorCatalogo
             productos={productosBusqueda}
+            categorias={colecciones.map((c) => ({
+              id: c.id,
+              nombre: c.nombre,
+            }))}
             slug={slug}
             colorTema={colorTema}
             emojis={estilo.emojis}
