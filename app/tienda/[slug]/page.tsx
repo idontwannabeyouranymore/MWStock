@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { configEstilo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
+import BuscadorCatalogo from "@/components/BuscadorCatalogo";
 
 type PageProps = {
   params: Promise<{
@@ -51,6 +52,45 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
 
   const colorTema = tienda.colorTema || "#ffffff";
   const estilo = configEstilo(tienda.estiloCatalogo);
+
+  // Todos los productos de la tienda, para el buscador.
+  const productosTienda = await prisma.producto.findMany({
+    where: { tiendaId: tienda.id, estado: { not: "ARCHIVADO" } },
+    include: {
+      imagenes: { orderBy: { orden: "asc" }, take: 1 },
+      variantes: { where: { estado: { not: "ARCHIVADA" } } },
+      componentes: { include: { variante: true } },
+    },
+    orderBy: { nombre: "asc" },
+  });
+
+  const productosBusqueda = productosTienda.map((p) => {
+    const soldOut = p.esSet
+      ? p.componentes.length === 0 ||
+        p.componentes.some((c) => c.variante.stock < c.cantidad)
+      : p.estado === "AGOTADO" ||
+        p.variantes.reduce((t, v) => t + v.stock, 0) === 0;
+
+    const precios = p.variantes.map((v) => Number(v.precio ?? p.precio));
+    const precioMin =
+      p.esSet || precios.length === 0
+        ? Number(p.precio)
+        : Math.min(...precios);
+    const precioMax =
+      p.esSet || precios.length === 0
+        ? Number(p.precio)
+        : Math.max(...precios);
+
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      imagen: p.imagenes[0]?.url ?? null,
+      soldOut,
+      precioMin,
+      precioMax,
+      esSet: p.esSet,
+    };
+  });
 
   const colecciones = tienda.colecciones.map((coleccion) => {
     const productosActivos = coleccion.productos.filter(
@@ -141,6 +181,15 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
             </a>
           )}
         </header>
+
+        <div className="mb-10">
+          <BuscadorCatalogo
+            productos={productosBusqueda}
+            slug={slug}
+            colorTema={colorTema}
+            emojis={estilo.emojis}
+          />
+        </div>
 
         <section className="space-y-5">
           <h2 className="text-2xl font-bold">
