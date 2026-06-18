@@ -84,6 +84,7 @@ export default function POSPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [sets, setSets] = useState<SetVenta[]>([]);
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
+  const [esPerfumes, setEsPerfumes] = useState(false);
 
   const [busqueda, setBusqueda] = useState("");
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
@@ -130,6 +131,7 @@ export default function POSPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
+        if (d?.tipo) setEsPerfumes(d.tipo === "PERFUMES");
       })
       .catch(() => {});
   }, [cargarProductos, cargarSets, cargarClientes]);
@@ -605,7 +607,9 @@ export default function POSPage() {
             <div className="space-y-2">
               <label className="text-sm text-neutral-300">Método de pago</label>
               <div className="grid grid-cols-2 gap-2">
-                {METODOS.map((metodo) => (
+                {METODOS.filter(
+                  (m) => esPerfumes || m.valor !== "FIADO"
+                ).map((metodo) => (
                   <button
                     key={metodo.valor}
                     onClick={() => setMetodoPago(metodo.valor)}
@@ -661,13 +665,15 @@ export default function POSPage() {
             <div className="space-y-2 border-t border-neutral-800 pt-3">
               <label className="text-sm text-neutral-300">
                 Cliente{" "}
-                {metodoPago === "FIADO" ? (
+                {esPerfumes && metodoPago === "FIADO" ? (
                   <span className="text-amber-400">(requerido para fiar)</span>
                 ) : (
                   "(opcional)"
                 )}
               </label>
 
+              {esPerfumes && (
+                <>
               {/* Selector de cliente registrado */}
               <div className="flex gap-2">
                 <select
@@ -717,6 +723,8 @@ export default function POSPage() {
                     Crear y seleccionar
                   </button>
                 </div>
+              )}
+                </>
               )}
 
               {/* Datos sueltos para el ticket (solo si no hay cliente registrado) */}

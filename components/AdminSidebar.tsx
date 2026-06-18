@@ -12,7 +12,6 @@ const links = [
   { href: "/administrador/inventario", label: "Inventario" },
   { href: "/administrador/ventas", label: "Ventas" },
   { href: "/administrador/corte", label: "Corte de caja" },
-  { href: "/administrador/clientes", label: "Clientes" },
   { href: "/administrador/qr", label: "Código QR" },
   { href: "/administrador/configuracion", label: "Configuración" },
   { href: "/administrador/cuenta", label: "Mi cuenta" },
@@ -43,8 +42,12 @@ export default function AdminSidebar() {
       ? links.flatMap((l) => {
           if (l.href === "/administrador/productos")
             return [l, { href: "/administrador/sets", label: "Sets" }];
-          if (l.href === "/administrador/clientes")
-            return [l, { href: "/administrador/tandas", label: "Tandas" }];
+          if (l.href === "/administrador/corte")
+            return [
+              l,
+              { href: "/administrador/clientes", label: "Clientes" },
+              { href: "/administrador/tandas", label: "Tandas" },
+            ];
           return [l];
         })
       : links;

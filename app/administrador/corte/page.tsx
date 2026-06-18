@@ -53,6 +53,7 @@ export default function CortePage() {
   const [cargando, setCargando] = useState(true);
   const [fecha, setFecha] = useState(ymdLocal(new Date()));
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
+  const [esPerfumes, setEsPerfumes] = useState(false);
 
   useEffect(() => {
     fetch("/api/ventas")
@@ -64,6 +65,7 @@ export default function CortePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
+        if (d?.tipo) setEsPerfumes(d.tipo === "PERFUMES");
       })
       .catch(() => {});
     fetch("/api/abonos")
@@ -232,33 +234,37 @@ export default function CortePage() {
                     </span>
                   </div>
                 ))}
-                <div className="flex justify-between border-b border-neutral-800 pb-2">
-                  <span className="text-neutral-300">
-                    Fiado — a crédito{" "}
-                    <span className="text-neutral-500">
-                      ({resumen.base.FIADO.conteo})
-                    </span>
-                  </span>
-                  <span className="text-right">
-                    <span className="font-semibold text-amber-400">
-                      ${resumen.base.FIADO.valor.toFixed(2)}
-                    </span>
-                    <span className="block text-xs text-neutral-500">
-                      no entra a caja
-                    </span>
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-300">
-                    Abonos cobrados hoy{" "}
-                    <span className="text-neutral-500">
-                      ({resumen.abonosCount})
-                    </span>
-                  </span>
-                  <span className="font-semibold text-green-400">
-                    ${resumen.sumAbonos.toFixed(2)}
-                  </span>
-                </div>
+                {esPerfumes && (
+                  <>
+                    <div className="flex justify-between border-b border-neutral-800 pb-2">
+                      <span className="text-neutral-300">
+                        Fiado — a crédito{" "}
+                        <span className="text-neutral-500">
+                          ({resumen.base.FIADO.conteo})
+                        </span>
+                      </span>
+                      <span className="text-right">
+                        <span className="font-semibold text-amber-400">
+                          ${resumen.base.FIADO.valor.toFixed(2)}
+                        </span>
+                        <span className="block text-xs text-neutral-500">
+                          no entra a caja
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-300">
+                        Abonos cobrados hoy{" "}
+                        <span className="text-neutral-500">
+                          ({resumen.abonosCount})
+                        </span>
+                      </span>
+                      <span className="font-semibold text-green-400">
+                        ${resumen.sumAbonos.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="mt-4 space-y-1 text-sm">
@@ -268,12 +274,16 @@ export default function CortePage() {
                     ${resumen.recibido.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Quedó por cobrar (fiado)</span>
-                  <span className="font-bold text-amber-400">
-                    ${resumen.pendiente.toFixed(2)}
-                  </span>
-                </div>
+                {esPerfumes && (
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">
+                      Quedó por cobrar (fiado)
+                    </span>
+                    <span className="font-bold text-amber-400">
+                      ${resumen.pendiente.toFixed(2)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -324,11 +334,13 @@ export default function CortePage() {
               )}
             </div>
 
-            <p className="text-xs text-neutral-600">
-              &quot;Recibido en caja&quot; = efectivo + tarjeta + transferencia
-              + abonos cobrados hoy (incluye enganches). El fiado a crédito no
-              entra a caja hasta que se abona.
-            </p>
+            {esPerfumes && (
+              <p className="text-xs text-neutral-600">
+                &quot;Recibido en caja&quot; = efectivo + tarjeta +
+                transferencia + abonos cobrados hoy (incluye enganches). El
+                fiado a crédito no entra a caja hasta que se abona.
+              </p>
+            )}
           </>
         )}
       </section>
