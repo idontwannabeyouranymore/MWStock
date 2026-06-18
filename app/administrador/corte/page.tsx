@@ -18,6 +18,13 @@ type Venta = {
   createdAt: string;
   items: VentaItem[];
 };
+type Abono = {
+  id: string;
+  monto: string;
+  nota: string | null;
+  createdAt: string;
+  clienteNombre: string;
+};
 
 function ymdLocal(d: Date) {
   const y = d.getFullYear();
@@ -42,6 +49,7 @@ const METODO_LABEL: Record<string, string> = {
 
 export default function CortePage() {
   const [ventas, setVentas] = useState<Venta[]>([]);
+  const [abonos, setAbonos] = useState<Abono[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fecha, setFecha] = useState(ymdLocal(new Date()));
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
@@ -57,6 +65,10 @@ export default function CortePage() {
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
       })
+      .catch(() => {});
+    fetch("/api/abonos")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setAbonos(Array.isArray(d) ? d : []))
       .catch(() => {});
   }, []);
 
@@ -89,19 +101,33 @@ export default function CortePage() {
         base.EFECTIVO.monto += total;
       }
     }
+    // Abonos cobrados este día (incluye los enganches de los fiados de hoy,
+    // por eso NO sumamos base.FIADO.enganche aparte: evitamos duplicar).
+    const abonosDelDia = abonos.filter(
+      (a) => ymdLocal(new Date(a.createdAt)) === fecha
+    );
+    const sumAbonos = abonosDelDia.reduce((s, a) => s + Number(a.monto), 0);
+
     const recibido =
       base.EFECTIVO.monto +
       base.TARJETA.monto +
       base.TRANSFERENCIA.monto +
-      base.FIADO.enganche;
+      sumAbonos;
     const vendido =
       base.EFECTIVO.monto +
       base.TARJETA.monto +
       base.TRANSFERENCIA.monto +
       base.FIADO.valor;
     const pendiente = base.FIADO.valor - base.FIADO.enganche;
-    return { base, recibido, vendido, pendiente };
-  }, [delDia]);
+    return {
+      base,
+      recibido,
+      vendido,
+      pendiente,
+      sumAbonos,
+      abonosCount: abonosDelDia.length,
+    };
+  }, [delDia, abonos, fecha]);
 
   function moverDia(delta: number) {
     const d = new Date(fecha + "T12:00:00");
@@ -208,7 +234,7 @@ export default function CortePage() {
                 ))}
                 <div className="flex justify-between border-b border-neutral-800 pb-2">
                   <span className="text-neutral-300">
-                    Fiado{" "}
+                    Fiado — a crédito{" "}
                     <span className="text-neutral-500">
                       ({resumen.base.FIADO.conteo})
                     </span>
@@ -218,8 +244,19 @@ export default function CortePage() {
                       ${resumen.base.FIADO.valor.toFixed(2)}
                     </span>
                     <span className="block text-xs text-neutral-500">
-                      enganche ${resumen.base.FIADO.enganche.toFixed(2)}
+                      no entra a caja
                     </span>
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-300">
+                    Abonos cobrados hoy{" "}
+                    <span className="text-neutral-500">
+                      ({resumen.abonosCount})
+                    </span>
+                  </span>
+                  <span className="font-semibold text-green-400">
+                    ${resumen.sumAbonos.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -288,8 +325,9 @@ export default function CortePage() {
             </div>
 
             <p className="text-xs text-neutral-600">
-              Nota: el corte cuenta ventas (y el enganche de los fiados). Los
-              abonos a deudas viejas no se incluyen aquí.
+              &quot;Recibido en caja&quot; = efectivo + tarjeta + transferencia
+              + abonos cobrados hoy (incluye enganches). El fiado a crédito no
+              entra a caja hasta que se abona.
             </p>
           </>
         )}

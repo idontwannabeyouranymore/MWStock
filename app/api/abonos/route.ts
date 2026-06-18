@@ -2,6 +2,40 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
 
+// GET: lista de abonos de la tienda (para cortes y reportes).
+export async function GET() {
+  try {
+    const tienda = await obtenerTiendaDeSesion();
+    if (!tienda) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const abonos = await prisma.abono.findMany({
+      where: { deuda: { tiendaId: tienda.id } },
+      include: {
+        deuda: { include: { cliente: { select: { nombre: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const data = abonos.map((a) => ({
+      id: a.id,
+      monto: a.monto,
+      nota: a.nota,
+      createdAt: a.createdAt,
+      clienteNombre: a.deuda.cliente.nombre,
+    }));
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("GET /api/abonos", error);
+    return NextResponse.json(
+      { error: "Error al obtener abonos" },
+      { status: 500 }
+    );
+  }
+}
+
 // POST: registrar un abono a una deuda. Reduce el saldo y marca PAGADA si llega a 0.
 export async function POST(request: Request) {
   try {
