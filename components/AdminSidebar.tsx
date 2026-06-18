@@ -41,7 +41,11 @@ export default function AdminSidebar() {
     tipo === "PERFUMES"
       ? links.flatMap((l) => {
           if (l.href === "/administrador/productos")
-            return [l, { href: "/administrador/sets", label: "Sets" }];
+            return [
+              l,
+              { href: "/administrador/sets", label: "Sets" },
+              { href: "/administrador/importar", label: "Importar" },
+            ];
           if (l.href === "/administrador/corte")
             return [
               l,

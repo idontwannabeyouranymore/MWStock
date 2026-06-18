@@ -37,6 +37,9 @@ export default function ConfiguracionPage() {
   const [subiendoBanner, setSubiendoBanner] = useState(false);
   const [cargando, setCargando] = useState(false);
 
+  const [confirmReset, setConfirmReset] = useState("");
+  const [borrando, setBorrando] = useState(false);
+
   async function obtenerTienda() {
     const response = await fetch("/api/tienda");
     const data = await response.json();
@@ -111,6 +114,33 @@ export default function ConfiguracionPage() {
     setTienda(data);
     setCargando(false);
     alert("Configuración guardada");
+  }
+
+  async function borrarDatos() {
+    if (confirmReset !== "BORRAR") return;
+    if (
+      !confirm(
+        "Esto borra TODO el catálogo e historial de la tienda. ¿Continuar?"
+      )
+    ) {
+      return;
+    }
+    setBorrando(true);
+    try {
+      const r = await fetch("/api/tienda/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmacion: "BORRAR" }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Error");
+      setConfirmReset("");
+      alert("Listo. Se borró el catálogo y el historial de la tienda.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBorrando(false);
+    }
   }
 
   useEffect(() => {
@@ -382,6 +412,35 @@ export default function ConfiguracionPage() {
             {cargando ? "Guardando..." : "Guardar configuración"}
           </button>
         </form>
+
+        {/* Zona de peligro */}
+        <div className="space-y-3 rounded-2xl border border-red-900 bg-red-950/20 p-5">
+          <h2 className="text-lg font-semibold text-red-400">
+            Zona de peligro
+          </h2>
+          <p className="text-sm text-neutral-400">
+            Borra TODO el catálogo e historial de esta tienda: productos,
+            presentaciones, colecciones, sets, ventas, corte, clientes, deudas
+            y tandas. Conserva tu cuenta y esta configuración. Úsalo para
+            limpiar los datos de prueba. No se puede deshacer.
+          </p>
+          <p className="text-sm text-neutral-300">
+            Escribe <span className="font-bold">BORRAR</span> para confirmar:
+          </p>
+          <input
+            value={confirmReset}
+            onChange={(e) => setConfirmReset(e.target.value)}
+            placeholder="BORRAR"
+            className="w-full rounded-xl border border-red-900 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-red-500"
+          />
+          <button
+            onClick={borrarDatos}
+            disabled={confirmReset !== "BORRAR" || borrando}
+            className="rounded-xl bg-red-600 px-5 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-40"
+          >
+            {borrando ? "Borrando..." : "Borrar todos los datos de la tienda"}
+          </button>
+        </div>
       </section>
     </main>
   );
