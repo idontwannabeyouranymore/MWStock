@@ -15,6 +15,7 @@ type Tienda = {
   bannerUrl: string | null;
   colorTema: string | null;
   estiloCatalogo: string;
+  tipo: string;
   slug: string;
 };
 
@@ -30,6 +31,7 @@ export default function ConfiguracionPage() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [colorTema, setColorTema] = useState("#ffffff");
   const [estiloCatalogo, setEstiloCatalogo] = useState("JUVENIL");
+  const [tipoTienda, setTipoTienda] = useState("ROPA");
 
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [subiendoBanner, setSubiendoBanner] = useState(false);
@@ -49,6 +51,7 @@ export default function ConfiguracionPage() {
     setBannerUrl(data.bannerUrl || "");
     setColorTema(data.colorTema || "#ffffff");
     setEstiloCatalogo(data.estiloCatalogo || "JUVENIL");
+    setTipoTienda(data.tipo || "ROPA");
   }
 
   async function subirImagen(archivo: File) {
@@ -94,6 +97,7 @@ export default function ConfiguracionPage() {
         bannerUrl,
         colorTema,
         estiloCatalogo,
+        tipo: tipoTienda,
       }),
     });
 
@@ -240,6 +244,22 @@ export default function ConfiguracionPage() {
                 Vista previa del color
               </div>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-neutral-300">Tipo de tienda</label>
+            <select
+              value={tipoTienda}
+              onChange={(event) => setTipoTienda(event.target.value)}
+              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+            >
+              <option value="ROPA">Ropa</option>
+              <option value="PERFUMES">Perfumes</option>
+            </select>
+            <p className="text-xs text-neutral-500">
+              Cambia las etiquetas del catálogo: &quot;tallas&quot; (ropa) vs
+              &quot;presentaciones&quot; con precio propio (perfumes).
+            </p>
           </div>
 
           <div className="space-y-2">

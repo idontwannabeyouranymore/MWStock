@@ -51,6 +51,7 @@ export async function PATCH(request: Request) {
         ...(body.estiloCatalogo !== undefined && {
           estiloCatalogo: body.estiloCatalogo,
         }),
+        ...(body.tipo !== undefined && { tipo: body.tipo }),
       },
     });
 

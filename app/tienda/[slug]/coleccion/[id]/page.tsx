@@ -79,7 +79,7 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
 
   const productos = coleccion.productos
     .map(({ producto }) => producto)
-    .filter((producto) => producto.estado !== "ARCHIVADO");
+    .filter((producto) => producto.estado !== "ARCHIVADO" && !producto.esSet);
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
@@ -129,6 +129,16 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
               const imagenPrincipal = producto.imagenes[0];
               const nuevo = estilo.badges && esNuevo(producto.createdAt);
               const destacado = estilo.badges && producto.destacado;
+
+              const precios = producto.variantes.map((v) =>
+                Number(v.precio ?? producto.precio)
+              );
+              const precioMin = precios.length
+                ? Math.min(...precios)
+                : Number(producto.precio);
+              const precioMax = precios.length
+                ? Math.max(...precios)
+                : Number(producto.precio);
 
               return (
                 <article
@@ -186,7 +196,9 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                         className="text-xl font-bold"
                         style={{ color: colorTema }}
                       >
-                        ${Number(producto.precio).toFixed(2)}
+                        {precioMin === precioMax
+                          ? `$${precioMin.toFixed(2)}`
+                          : `desde $${precioMin.toFixed(2)}`}
                       </p>
 
                       <div className="space-y-2">

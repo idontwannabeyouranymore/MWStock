@@ -47,6 +47,12 @@ export async function PATCH(request: Request, context: RouteContext) {
         talla: body.talla,
         color: body.color,
         stock,
+        ...(body.precio !== undefined && {
+          precio:
+            body.precio === null || body.precio === ""
+              ? null
+              : Number(body.precio),
+        }),
         estado:
           stock !== undefined
             ? stock > 0

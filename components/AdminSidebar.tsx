@@ -19,11 +19,31 @@ const links = [
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
+  const [tipo, setTipo] = useState("ROPA");
 
   // Cierra el menú al navegar.
   useEffect(() => {
     setAbierto(false);
   }, [pathname]);
+
+  useEffect(() => {
+    fetch("/api/tienda")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.tipo) setTipo(d.tipo);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Las perfumerías ven el menú "Sets" después de "Productos".
+  const linksMostrar =
+    tipo === "PERFUMES"
+      ? links.flatMap((l) =>
+          l.href === "/administrador/productos"
+            ? [l, { href: "/administrador/sets", label: "Sets" }]
+            : [l]
+        )
+      : links;
 
   return (
     <>
@@ -69,7 +89,7 @@ export default function AdminSidebar() {
         </div>
 
         <nav className="space-y-1 px-4">
-          {links.map((link) => {
+          {linksMostrar.map((link) => {
             const active = pathname === link.href;
 
             return (

@@ -54,7 +54,8 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
 
   const colecciones = tienda.colecciones.map((coleccion) => {
     const productosActivos = coleccion.productos.filter(
-      ({ producto }) => producto.estado !== "ARCHIVADO"
+      ({ producto }) =>
+        producto.estado !== "ARCHIVADO" && !producto.esSet
     );
 
     const portada =

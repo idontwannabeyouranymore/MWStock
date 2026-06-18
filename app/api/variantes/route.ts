@@ -76,6 +76,12 @@ export async function POST(request: Request) {
         talla,
         color,
         stock: Number(stock),
+        precio:
+          body.precio === undefined ||
+          body.precio === null ||
+          body.precio === ""
+            ? null
+            : Number(body.precio),
         estado: Number(stock) > 0 ? "ACTIVA" : "AGOTADA",
       },
       include: {
