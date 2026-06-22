@@ -3,24 +3,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  normalizarModulos,
+  type ClaveModulo,
+  type Modulos,
+} from "@/lib/modulos";
 
-const links = [
-  { href: "/administrador", label: "Dashboard" },
-  { href: "/administrador/pos", label: "Punto de venta" },
-  { href: "/administrador/colecciones", label: "Colecciones" },
-  { href: "/administrador/productos", label: "Productos" },
-  { href: "/administrador/inventario", label: "Inventario" },
-  { href: "/administrador/ventas", label: "Ventas" },
-  { href: "/administrador/corte", label: "Corte de caja" },
-  { href: "/administrador/qr", label: "Código QR" },
-  { href: "/administrador/configuracion", label: "Configuración" },
-  { href: "/administrador/cuenta", label: "Mi cuenta" },
+// mod = null -> siempre visible. mod = clave -> visible solo si el módulo está activo.
+const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
+  { href: "/administrador", label: "Dashboard", mod: null },
+  { href: "/administrador/pos", label: "Punto de venta", mod: "pos" },
+  { href: "/administrador/colecciones", label: "Colecciones", mod: "colecciones" },
+  { href: "/administrador/productos", label: "Productos", mod: null },
+  { href: "/administrador/importar", label: "Importar", mod: "importar" },
+  { href: "/administrador/sets", label: "Sets", mod: "sets" },
+  { href: "/administrador/inventario", label: "Inventario", mod: "inventario" },
+  { href: "/administrador/ventas", label: "Ventas", mod: "ventas" },
+  { href: "/administrador/corte", label: "Corte de caja", mod: "corte" },
+  { href: "/administrador/clientes", label: "Clientes", mod: "clientes" },
+  { href: "/administrador/tandas", label: "Tandas", mod: "tandas" },
+  { href: "/administrador/qr", label: "Código QR", mod: null },
+  { href: "/administrador/configuracion", label: "Configuración", mod: null },
+  { href: "/administrador/cuenta", label: "Mi cuenta", mod: null },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
-  const [tipo, setTipo] = useState("ROPA");
+  const [modulos, setModulos] = useState<Modulos | null>(null);
 
   // Cierra el menú al navegar.
   useEffect(() => {
@@ -31,30 +41,15 @@ export default function AdminSidebar() {
     fetch("/api/tienda")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.tipo) setTipo(d.tipo);
+        if (d) setModulos(normalizarModulos(d.modulos));
       })
       .catch(() => {});
   }, []);
 
-  // Las perfumerías ven el menú "Sets" después de "Productos".
-  const linksMostrar =
-    tipo === "PERFUMES"
-      ? links.flatMap((l) => {
-          if (l.href === "/administrador/productos")
-            return [
-              l,
-              { href: "/administrador/sets", label: "Sets" },
-              { href: "/administrador/importar", label: "Importar" },
-            ];
-          if (l.href === "/administrador/corte")
-            return [
-              l,
-              { href: "/administrador/clientes", label: "Clientes" },
-              { href: "/administrador/tandas", label: "Tandas" },
-            ];
-          return [l];
-        })
-      : links;
+  // Mientras carga, muestra solo los siempre-visibles para evitar parpadeo.
+  const linksMostrar = links.filter(
+    (l) => l.mod === null || (modulos ? modulos[l.mod] : false)
+  );
 
   return (
     <>

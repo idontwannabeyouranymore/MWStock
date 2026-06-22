@@ -3,6 +3,7 @@ import { obtenerTiendaDeSesion } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import ResumenHoy from "@/components/ResumenHoy";
+import { normalizarModulos } from "@/lib/modulos";
 
 function fechaCorta(d: Date) {
   return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
@@ -16,6 +17,7 @@ export default async function DashboardPage() {
   }
 
   const esPerfumes = tienda.tipo === "PERFUMES";
+  const mods = normalizarModulos(tienda.modulos);
 
   const [
     totalProductos,
@@ -60,7 +62,8 @@ export default async function DashboardPage() {
   ]);
 
   // Pendientes de tandas activas: el periodo actual de cada una.
-  const tandasActivas = await prisma.tanda.findMany({
+  const tandasActivas = mods.tandas
+    ? await prisma.tanda.findMany({
     where: { tiendaId: tienda.id, estado: "ACTIVA" },
     include: {
       participantes: {
@@ -79,7 +82,8 @@ export default async function DashboardPage() {
         },
       },
     },
-  });
+      })
+    : [];
 
   const tandasPendientes = tandasActivas
     .map((t) => {
@@ -111,7 +115,7 @@ export default async function DashboardPage() {
       titulo: esPerfumes ? "Perfumes" : "Productos",
       valor: totalProductos,
     },
-    ...(esPerfumes ? [{ titulo: "Sets", valor: totalSets }] : []),
+    ...(mods.sets ? [{ titulo: "Sets", valor: totalSets }] : []),
     {
       titulo: "Agotados",
       valor: productosAgotados,

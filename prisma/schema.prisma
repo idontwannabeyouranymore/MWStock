@@ -71,6 +71,7 @@ model Tienda {
   slug        String   @unique
   activa      Boolean  @default(true)
   tipo        TipoTienda @default(ROPA)
+  modulos     Json?
 
   usuarioId   String   @unique
   usuario     Usuario  @relation(fields: [usuarioId], references: [id])

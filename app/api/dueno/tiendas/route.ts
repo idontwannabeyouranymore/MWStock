@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { esDueno } from "@/lib/auth";
+import { normalizarModulos } from "@/lib/modulos";
 
 export async function GET() {
   if (!(await esDueno())) {
@@ -38,6 +39,8 @@ export async function GET() {
         nombre: tienda.nombre,
         slug: tienda.slug,
         activa: tienda.activa,
+        tipo: tienda.tipo,
+        modulos: normalizarModulos(tienda.modulos),
         email: tienda.usuario?.email ?? null,
         productos,
         stock: stock._sum.stock ?? 0,

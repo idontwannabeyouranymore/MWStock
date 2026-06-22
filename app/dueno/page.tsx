@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { urlDeTienda } from "@/lib/dominios";
+import { MODULOS, type Modulos } from "@/lib/modulos";
 
 type Tienda = {
   id: string;
   nombre: string;
   slug: string;
   activa: boolean;
+  tipo: string;
+  modulos: Modulos;
   email: string | null;
   productos: number;
   stock: number;
@@ -83,6 +86,30 @@ export default function DuenoPage() {
     }
 
     await cargar();
+  }
+
+  async function toggleModulo(tienda: Tienda, clave: keyof Modulos) {
+    const nuevoValor = !tienda.modulos[clave];
+
+    // Cambio optimista en pantalla.
+    setTiendas((prev) =>
+      prev.map((t) =>
+        t.id === tienda.id
+          ? { ...t, modulos: { ...t.modulos, [clave]: nuevoValor } }
+          : t
+      )
+    );
+
+    const response = await fetch(`/api/dueno/tiendas/${tienda.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modulos: { [clave]: nuevoValor } }),
+    });
+
+    if (!response.ok) {
+      alert("No se pudo actualizar la herramienta");
+      await cargar();
+    }
   }
 
   const totalIngresos = tiendas.reduce((s, t) => s + t.ingresos, 0);
@@ -251,6 +278,36 @@ export default function DuenoPage() {
                     ${tienda.ingresos.toFixed(2)}
                   </p>
                   <p className="text-xs text-neutral-500">ingresos</p>
+                </div>
+              </div>
+
+              {/* Herramientas activas de la tienda */}
+              <div className="mt-5 border-t border-neutral-800 pt-4">
+                <p className="text-sm font-semibold text-neutral-300">
+                  Herramientas
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Prende o apaga lo que esta tienda puede usar.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {MODULOS.map((m) => {
+                    const activo = tienda.modulos[m.clave];
+                    return (
+                      <button
+                        key={m.clave}
+                        onClick={() => toggleModulo(tienda, m.clave)}
+                        title={m.descripcion}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                          activo
+                            ? "bg-green-600 text-white hover:bg-green-700"
+                            : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700"
+                        }`}
+                      >
+                        {activo ? "● " : "○ "}
+                        {m.etiqueta}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </article>
