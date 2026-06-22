@@ -39,7 +39,6 @@ type Producto = {
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [colecciones, setColecciones] = useState<Coleccion[]>([]);
-  const [tipoTienda, setTipoTienda] = useState("ROPA");
 
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
@@ -56,8 +55,7 @@ export default function ProductosPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
-  const esPerfumes = tipoTienda === "PERFUMES";
-  const etiquetaPresentacion = esPerfumes ? "presentación" : "talla";
+  const etiquetaPresentacion = "presentación";
 
   async function obtenerProductos() {
     const response = await fetch("/api/productos");
@@ -82,14 +80,6 @@ export default function ProductosPage() {
     }
   }
 
-  async function obtenerTienda() {
-    const response = await fetch("/api/tienda");
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.tipo) setTipoTienda(data.tipo);
-    }
-  }
-
   // --- Presentaciones / tallas ---
   function agregarTalla() {
     if (!tallaInput.trim()) {
@@ -100,11 +90,6 @@ export default function ProductosPage() {
     const stockNumero = stockInput === "" ? 0 : Number(stockInput);
     if (Number.isNaN(stockNumero) || stockNumero < 0) {
       alert("El stock debe ser 0 o mayor");
-      return;
-    }
-
-    if (esPerfumes && (precioInput === "" || Number(precioInput) <= 0)) {
-      alert("Pon el precio de la presentación");
       return;
     }
 
@@ -330,7 +315,6 @@ export default function ProductosPage() {
   useEffect(() => {
     obtenerProductos();
     obtenerColecciones();
-    obtenerTienda();
   }, []);
 
   const nombreColeccionEditando =
@@ -348,9 +332,8 @@ export default function ProductosPage() {
           </p>
           <h1 className="mt-2 text-3xl font-bold">Productos</h1>
           <p className="mt-2 text-neutral-400">
-            {esPerfumes
-              ? "Elige la categoría, nombre, y agrega las presentaciones (cada una con su precio y stock)."
-              : "Elige la colección, ponle nombre, precio, tallas y fotos. Todo en un solo paso."}
+            Elige la colección, ponle nombre y agrega las presentaciones (cada
+            una con su stock y, si quieres, su precio propio).
           </p>
         </div>
 
@@ -372,9 +355,7 @@ export default function ProductosPage() {
             </h2>
 
             <div className="space-y-2">
-              <label className="text-sm text-neutral-300">
-                {esPerfumes ? "Categoría" : "Colección"}
-              </label>
+              <label className="text-sm text-neutral-300">Colección</label>
               {editandoId ? (
                 <p className="rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-neutral-400">
                   {nombreColeccionEditando || "Sin colección"}
@@ -399,15 +380,13 @@ export default function ProductosPage() {
               <input
                 value={nombre}
                 onChange={(event) => setNombre(event.target.value)}
-                placeholder={esPerfumes ? "Ej. Dior Sauvage" : "Nombre del producto"}
+                placeholder="Nombre del producto"
                 className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-neutral-300">
-                {esPerfumes ? "Precio base (referencia)" : "Precio"}
-              </label>
+              <label className="text-sm text-neutral-300">Precio</label>
               <input
                 value={precio}
                 onChange={(event) => setPrecio(event.target.value)}
@@ -417,38 +396,29 @@ export default function ProductosPage() {
                 step="0.01"
                 className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
               />
-              {esPerfumes && (
-                <p className="text-xs text-neutral-500">
-                  Se usa solo si una presentación no tiene precio propio. Pon el
-                  más bajo como referencia.
-                </p>
-              )}
+              <p className="text-xs text-neutral-500">
+                Se usa si una presentación no tiene precio propio.
+              </p>
             </div>
 
             {/* Presentaciones / tallas */}
             <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
               <label className="text-sm text-neutral-300">
-                {esPerfumes
-                  ? "Presentaciones (precio y stock)"
-                  : "Tallas y stock"}
+                Presentaciones (stock y precio opcional)
               </label>
 
               <div className="flex flex-wrap gap-2">
                 <input
                   value={tallaInput}
                   onChange={(event) => setTallaInput(event.target.value)}
-                  placeholder={
-                    esPerfumes
-                      ? "Presentación (Decant 5ml, Completo 100ml...)"
-                      : "Talla (M, L, 32...)"
-                  }
+                  placeholder="Presentación (Única, M, L, 10ml...)"
                   className="min-w-32 flex-1 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-white outline-none focus:border-white"
                 />
 
                 <input
                   value={precioInput}
                   onChange={(event) => setPrecioInput(event.target.value)}
-                  placeholder={esPerfumes ? "Precio" : "Precio (opc.)"}
+                  placeholder="Precio (opc.)"
                   type="number"
                   min="0"
                   step="0.01"
@@ -501,7 +471,7 @@ export default function ProductosPage() {
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder={esPerfumes ? "precio" : "opc."}
+                        placeholder="opc."
                         className="w-24 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-1 text-white outline-none focus:border-white"
                       />
 
@@ -628,14 +598,12 @@ export default function ProductosPage() {
                               {producto.nombre}
                             </h3>
 
-                            {!esPerfumes && (
-                              <p className="mt-2 font-semibold">
-                                ${Number(producto.precio).toFixed(2)}
-                              </p>
-                            )}
+                            <p className="mt-2 font-semibold">
+                              ${Number(producto.precio).toFixed(2)}
+                            </p>
 
                             <p className="mt-2 text-sm text-neutral-500">
-                              {esPerfumes ? "Categoría:" : "Colección:"}{" "}
+                              Colección:{" "}
                               {producto.colecciones
                                 .map((item) => item.coleccion.nombre)
                                 .join(", ") || "Sin colección"}
@@ -643,7 +611,7 @@ export default function ProductosPage() {
 
                             <div className="mt-2 text-sm text-neutral-400">
                               <span className="text-neutral-500">
-                                {esPerfumes ? "Presentaciones: " : "Tallas: "}
+                                Presentaciones:
                               </span>
                               {tallasActivas.length > 0
                                 ? tallasActivas

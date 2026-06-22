@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { normalizarModulos } from "@/lib/modulos";
 
 type VentaItem = {
   productoNombre: string;
@@ -53,7 +54,7 @@ export default function CortePage() {
   const [cargando, setCargando] = useState(true);
   const [fecha, setFecha] = useState(ymdLocal(new Date()));
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
-  const [esPerfumes, setEsPerfumes] = useState(false);
+  const [clientesActivo, setClientesActivo] = useState(false);
 
   useEffect(() => {
     fetch("/api/ventas")
@@ -65,7 +66,7 @@ export default function CortePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
-        if (d?.tipo) setEsPerfumes(d.tipo === "PERFUMES");
+        setClientesActivo(normalizarModulos(d?.modulos).clientes);
       })
       .catch(() => {});
     fetch("/api/abonos")
@@ -234,7 +235,7 @@ export default function CortePage() {
                     </span>
                   </div>
                 ))}
-                {esPerfumes && (
+                {clientesActivo && (
                   <>
                     <div className="flex justify-between border-b border-neutral-800 pb-2">
                       <span className="text-neutral-300">
@@ -274,7 +275,7 @@ export default function CortePage() {
                     ${resumen.recibido.toFixed(2)}
                   </span>
                 </div>
-                {esPerfumes && (
+                {clientesActivo && (
                   <div className="flex justify-between">
                     <span className="text-neutral-400">
                       Quedó por cobrar (fiado)
@@ -334,7 +335,7 @@ export default function CortePage() {
               )}
             </div>
 
-            {esPerfumes && (
+            {clientesActivo && (
               <p className="text-xs text-neutral-600">
                 &quot;Recibido en caja&quot; = efectivo + tarjeta +
                 transferencia + abonos cobrados hoy (incluye enganches). El

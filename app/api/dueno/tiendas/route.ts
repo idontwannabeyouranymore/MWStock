@@ -39,7 +39,6 @@ export async function GET() {
         nombre: tienda.nombre,
         slug: tienda.slug,
         activa: tienda.activa,
-        tipo: tienda.tipo,
         modulos: normalizarModulos(tienda.modulos),
         email: tienda.usuario?.email ?? null,
         productos,

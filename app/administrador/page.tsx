@@ -16,7 +16,6 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const esPerfumes = tienda.tipo === "PERFUMES";
   const mods = normalizarModulos(tienda.modulos);
 
   const [
@@ -112,7 +111,7 @@ export default async function DashboardPage() {
 
   const cards = [
     {
-      titulo: esPerfumes ? "Perfumes" : "Productos",
+      titulo: "Productos",
       valor: totalProductos,
     },
     ...(mods.sets ? [{ titulo: "Sets", valor: totalSets }] : []),
@@ -121,7 +120,7 @@ export default async function DashboardPage() {
       valor: productosAgotados,
     },
     {
-      titulo: esPerfumes ? "Presentaciones" : "Tallas",
+      titulo: "Presentaciones",
       valor: totalPresentaciones,
     },
     {
@@ -213,7 +212,7 @@ export default async function DashboardPage() {
             Stock bajo (3 o menos)
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
-            {esPerfumes ? "Presentaciones" : "Tallas"} por reabastecer.
+            Presentaciones por reabastecer.
           </p>
 
           {stockBajo.length === 0 ? (

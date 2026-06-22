@@ -79,7 +79,6 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
 
   const colorTema = tienda.colorTema || "#ffffff";
   const estilo = configEstilo(tienda.estiloCatalogo);
-  const esPerfumes = tienda.tipo === "PERFUMES";
 
   const productos = coleccion.productos
     .map(({ producto }) => producto)
@@ -230,11 +229,11 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
                         ) : (
                           <>
                             <p className="text-sm font-semibold text-neutral-300">
-                              {esPerfumes ? "Presentaciones" : "Tallas"}
+                              Presentaciones
                             </p>
                             {variantesActivas.length === 0 ? (
                               <p className="text-sm text-neutral-500">
-                                Sin {esPerfumes ? "presentaciones" : "tallas"}
+                                Sin presentaciones
                               </p>
                             ) : (
                               <div className="flex flex-wrap gap-2">

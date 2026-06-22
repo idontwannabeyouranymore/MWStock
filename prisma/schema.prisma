@@ -12,11 +12,6 @@ enum RolUsuario {
   DUENO
 }
 
-enum TipoTienda {
-  ROPA
-  PERFUMES
-}
-
 enum EstadoColeccion {
   ACTIVA
   OCULTA
@@ -70,7 +65,6 @@ model Tienda {
   direccion   String?
   slug        String   @unique
   activa      Boolean  @default(true)
-  tipo        TipoTienda @default(ROPA)
   modulos     Json?
 
   usuarioId   String   @unique

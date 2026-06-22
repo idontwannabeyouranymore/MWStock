@@ -83,7 +83,6 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
   const nuevo = estilo.badges && esNuevo(producto.createdAt) && !soldOut;
   const destacado = estilo.badges && producto.destacado;
 
-  const esPerfumes = tienda.tipo === "PERFUMES";
   const preciosPres = producto.variantes.map((v) =>
     Number(v.precio ?? producto.precio)
   );
@@ -191,7 +190,7 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
                 <>
                   <h2 className="text-lg font-semibold">
                     {estilo.emojis ? "📏 " : ""}
-                    {esPerfumes ? "Presentaciones" : "Disponibilidad"}
+                    Presentaciones
                   </h2>
 
                   {producto.variantes.length === 0 ? (
@@ -204,26 +203,16 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
                           className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3"
                         >
                           <div>
-                            <p className="font-semibold">
-                              {esPerfumes
-                                ? variante.talla
-                                : `Talla ${variante.talla}`}
+                            <p className="font-semibold">{variante.talla}</p>
+                            <p
+                              className="text-sm font-semibold"
+                              style={{ color: colorTema }}
+                            >
+                              $
+                              {Number(
+                                variante.precio ?? producto.precio
+                              ).toFixed(2)}
                             </p>
-                            {esPerfumes ? (
-                              <p
-                                className="text-sm font-semibold"
-                                style={{ color: colorTema }}
-                              >
-                                $
-                                {Number(
-                                  variante.precio ?? producto.precio
-                                ).toFixed(2)}
-                              </p>
-                            ) : (
-                              <p className="text-sm text-neutral-400">
-                                {variante.color || "Sin color"}
-                              </p>
-                            )}
                           </div>
 
                           <span

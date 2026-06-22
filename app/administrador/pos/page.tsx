@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { normalizarModulos } from "@/lib/modulos";
 
 type Variante = {
   id: string;
@@ -84,7 +85,7 @@ export default function POSPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [sets, setSets] = useState<SetVenta[]>([]);
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
-  const [esPerfumes, setEsPerfumes] = useState(false);
+  const [clientesActivo, setClientesActivo] = useState(false);
 
   const [busqueda, setBusqueda] = useState("");
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
@@ -131,7 +132,7 @@ export default function POSPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
-        if (d?.tipo) setEsPerfumes(d.tipo === "PERFUMES");
+        setClientesActivo(normalizarModulos(d?.modulos).clientes);
       })
       .catch(() => {});
   }, [cargarProductos, cargarSets, cargarClientes]);
@@ -608,7 +609,7 @@ export default function POSPage() {
               <label className="text-sm text-neutral-300">Método de pago</label>
               <div className="grid grid-cols-2 gap-2">
                 {METODOS.filter(
-                  (m) => esPerfumes || m.valor !== "FIADO"
+                  (m) => clientesActivo || m.valor !== "FIADO"
                 ).map((metodo) => (
                   <button
                     key={metodo.valor}
@@ -665,14 +666,14 @@ export default function POSPage() {
             <div className="space-y-2 border-t border-neutral-800 pt-3">
               <label className="text-sm text-neutral-300">
                 Cliente{" "}
-                {esPerfumes && metodoPago === "FIADO" ? (
+                {clientesActivo && metodoPago === "FIADO" ? (
                   <span className="text-amber-400">(requerido para fiar)</span>
                 ) : (
                   "(opcional)"
                 )}
               </label>
 
-              {esPerfumes && (
+              {clientesActivo && (
                 <>
               {/* Selector de cliente registrado */}
               <div className="flex gap-2">

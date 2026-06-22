@@ -9,7 +9,6 @@ type Tienda = {
   nombre: string;
   slug: string;
   activa: boolean;
-  tipo: string;
   modulos: Modulos;
   email: string | null;
   productos: number;
