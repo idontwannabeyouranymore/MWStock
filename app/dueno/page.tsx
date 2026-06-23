@@ -87,6 +87,25 @@ export default function DuenoPage() {
     await cargar();
   }
 
+  async function eliminarTienda(tienda: Tienda) {
+    if (
+      !confirm(
+        `¿Eliminar PERMANENTEMENTE "${tienda.nombre}" y TODOS sus datos (catálogo, ventas, clientes)? Esta acción no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
+    const response = await fetch(`/api/dueno/tiendas/${tienda.id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      alert(data.error || "No se pudo eliminar la tienda");
+      return;
+    }
+    await cargar();
+  }
+
   async function toggleModulo(tienda: Tienda, clave: keyof Modulos) {
     const nuevoValor = !tienda.modulos[clave];
 
@@ -255,6 +274,12 @@ export default function DuenoPage() {
                     }`}
                   >
                     {tienda.activa ? "Suspender" : "Reactivar"}
+                  </button>
+                  <button
+                    onClick={() => eliminarTienda(tienda)}
+                    className="rounded-lg border border-red-800 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-950/40"
+                  >
+                    Eliminar
                   </button>
                 </div>
               </div>
