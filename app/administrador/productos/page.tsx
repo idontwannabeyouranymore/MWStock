@@ -42,6 +42,7 @@ export default function ProductosPage() {
   const [colecciones, setColecciones] = useState<Coleccion[]>([]);
 
   const [nombre, setNombre] = useState("");
+  const [marca, setMarca] = useState("");
   const [precio, setPrecio] = useState("");
   const [coleccionId, setColeccionId] = useState("");
 
@@ -202,7 +203,11 @@ export default function ProductosPage() {
         const response = await fetch(`/api/productos/${editandoId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre, precio: Number(precio) }),
+          body: JSON.stringify({
+            nombre,
+            marca: marca.trim() || null,
+            precio: Number(precio),
+          }),
         });
         if (!response.ok) throw new Error("No se pudo editar el producto");
       } else {
@@ -211,6 +216,7 @@ export default function ProductosPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             nombre,
+            marca: marca.trim() || null,
             precio: Number(precio),
             coleccionIds: coleccionId ? [coleccionId] : [],
           }),
@@ -235,6 +241,7 @@ export default function ProductosPage() {
 
   function limpiarFormulario() {
     setNombre("");
+    setMarca("");
     setPrecio("");
     setTallas([]);
     setTallaInput("");
@@ -254,6 +261,7 @@ export default function ProductosPage() {
   function cargarProductoParaEditar(producto: Producto) {
     setEditandoId(producto.id);
     setNombre(producto.nombre);
+    setMarca(producto.marca ?? "");
     setPrecio(String(producto.precio));
     setColeccionId(producto.colecciones[0]?.coleccion.id ?? "");
     setTallas(
@@ -402,6 +410,21 @@ export default function ProductosPage() {
                 placeholder="Nombre del producto"
                 className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-neutral-300">
+                Marca <span className="text-neutral-500">(opcional)</span>
+              </label>
+              <input
+                value={marca}
+                onChange={(event) => setMarca(event.target.value)}
+                placeholder="Ej. Nike, 31 Hats, Adidas..."
+                className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+              />
+              <p className="text-xs text-neutral-500">
+                Agrupa los productos por marca dentro de cada sección.
+              </p>
             </div>
 
             <div className="space-y-2">
