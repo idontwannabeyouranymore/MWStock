@@ -2,12 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
+import { normalizarModulos } from "@/lib/modulos";
 
 type PageProps = {
   params: Promise<{
     slug: string;
     id: string;
   }>;
+  searchParams: Promise<{ marca?: string }>;
 };
 
 type VariantePublica = {
@@ -18,8 +20,15 @@ type VariantePublica = {
   estado: string;
 };
 
-export default async function ColeccionPublicaPage({ params }: PageProps) {
+export default async function ColeccionPublicaPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { slug, id } = await params;
+  const { marca: marcaParamRaw } = await searchParams;
+  const marcaActiva = marcaParamRaw
+    ? decodeURIComponent(marcaParamRaw)
+    : null;
 
   const tienda = await prisma.tienda.findUnique({
     where: { slug },
@@ -84,14 +93,45 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
     .map(({ producto }) => producto)
     .filter((producto) => producto.estado !== "ARCHIVADO");
 
+  // El nivel de marcas solo aplica si el dueño habilitó esa herramienta.
+  const mods = normalizarModulos(tienda.modulos);
+  const marcaActivaVista = mods.marcas ? marcaActiva : null;
+
+  // Marcas presentes en la colección (con imagen de muestra y conteo).
+  const marcasMap = new Map<
+    string,
+    { nombre: string; total: number; imagen: string | null }
+  >();
+  for (const p of productos) {
+    const m = (p.marca || "").trim() || "Otros";
+    const cur = marcasMap.get(m) || { nombre: m, total: 0, imagen: null };
+    cur.total += 1;
+    if (!cur.imagen && p.imagenes[0]) cur.imagen = p.imagenes[0].url;
+    marcasMap.set(m, cur);
+  }
+  const marcas = [...marcasMap.values()].sort((a, b) => b.total - a.total);
+
+  // Si está habilitado, hay varias marcas y no se eligió una, mostramos el paso.
+  const mostrarMarcas =
+    mods.marcas && !marcaActivaVista && marcas.length > 1;
+  const productosFiltrados = marcaActivaVista
+    ? productos.filter(
+        (p) => ((p.marca || "").trim() || "Otros") === marcaActivaVista
+      )
+    : productos;
+
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
       <section className="mx-auto max-w-6xl px-6 py-8">
         <Link
-          href={enlaceCatalogo(slug)}
+          href={
+            marcaActivaVista
+              ? enlaceCatalogo(slug, `/coleccion/${id}`)
+              : enlaceCatalogo(slug)
+          }
           className="text-sm text-neutral-400 transition hover:text-white"
         >
-          ← Volver a colecciones
+          ← {marcaActivaVista ? "Volver a marcas" : "Volver a colecciones"}
         </Link>
 
         <header className="animar-entrada mt-6 mb-10">
@@ -99,11 +139,11 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
             className="text-sm uppercase tracking-[0.3em]"
             style={{ color: colorTema }}
           >
-            Colección
+            {marcaActivaVista ? coleccion.nombre : "Colección"}
           </p>
           <h1 className="mt-2 text-4xl font-bold">
             {estilo.emojis ? "✨ " : ""}
-            {coleccion.nombre}
+            {marcaActivaVista ?? coleccion.nombre}
           </h1>
           {coleccion.descripcion && (
             <p className="mt-3 max-w-2xl text-neutral-300">
@@ -112,13 +152,49 @@ export default async function ColeccionPublicaPage({ params }: PageProps) {
           )}
         </header>
 
-        {productos.length === 0 ? (
+        {mostrarMarcas ? (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {marcas.map((m, indice) => (
+              <Link
+                key={m.nombre}
+                href={enlaceCatalogo(
+                  slug,
+                  `/coleccion/${id}?marca=${encodeURIComponent(m.nombre)}`
+                )}
+                style={{ animationDelay: `${indice * 60}ms` }}
+                className={`group animar-entrada block overflow-hidden ${estilo.tarjeta} ${estilo.cardHover}`}
+              >
+                <div className="relative flex h-48 items-center justify-center overflow-hidden bg-neutral-800">
+                  {m.imagen ? (
+                    <img
+                      src={m.imagen}
+                      alt={m.nombre}
+                      className={`h-full w-full object-cover ${estilo.imagenHover}`}
+                    />
+                  ) : (
+                    <span className="text-neutral-500">Sin imagen</span>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-xl font-bold drop-shadow">{m.nombre}</h3>
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: colorTema }}
+                    >
+                      {m.total} {m.total === 1 ? "producto" : "productos"}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : productosFiltrados.length === 0 ? (
           <p className="rounded-2xl border border-neutral-800 p-6 text-center text-neutral-400">
             Esta colección todavía no tiene productos.
           </p>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {productos.map((producto, indice) => {
+            {productosFiltrados.map((producto, indice) => {
               const esSetProd = producto.esSet;
               const variantesActivas = producto.variantes as VariantePublica[];
 

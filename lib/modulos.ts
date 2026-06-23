@@ -9,7 +9,8 @@ export type ClaveModulo =
   | "corte"
   | "clientes"
   | "tandas"
-  | "sets";
+  | "sets"
+  | "marcas";
 
 export type Modulos = Record<ClaveModulo, boolean>;
 
@@ -71,6 +72,13 @@ export const MODULOS: {
     clave: "sets",
     etiqueta: "Sets",
     descripcion: "Paquetes/kits de varias presentaciones.",
+    porDefecto: false,
+  },
+  {
+    clave: "marcas",
+    etiqueta: "Catálogo por marca",
+    descripcion:
+      "El cliente navega Categoría → Marca → Producto en el catálogo público.",
     porDefecto: false,
   },
 ];
