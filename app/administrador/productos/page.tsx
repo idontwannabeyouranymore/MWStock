@@ -56,6 +56,7 @@ export default function ProductosPage() {
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [coleccionVista, setColeccionVista] = useState<string | null>(null);
 
   const etiquetaPresentacion = "presentación";
 
@@ -332,23 +333,31 @@ export default function ProductosPage() {
           .nombre
       : null;
 
-  // Agrupa la lista por colección y, dentro, por marca (para no amontonar).
-  const porColeccion = new Map<string, Map<string, Producto[]>>();
+  // Agrupa por colección (id) y, dentro, por marca, para navegar como el catálogo.
+  const porColeccion = new Map<
+    string,
+    { nombre: string; marcas: Map<string, Producto[]> }
+  >();
   for (const p of productos) {
-    const col = p.colecciones[0]?.coleccion.nombre || "Sin colección";
+    const c = p.colecciones[0]?.coleccion;
+    const cid = c?.id || "__sin__";
+    const cnombre = c?.nombre || "Sin colección";
     const mar = (p.marca || "").trim() || "Otros";
-    if (!porColeccion.has(col)) porColeccion.set(col, new Map());
-    const mp = porColeccion.get(col)!;
-    if (!mp.has(mar)) mp.set(mar, []);
-    mp.get(mar)!.push(p);
+    if (!porColeccion.has(cid)) {
+      porColeccion.set(cid, { nombre: cnombre, marcas: new Map() });
+    }
+    const entry = porColeccion.get(cid)!;
+    if (!entry.marcas.has(mar)) entry.marcas.set(mar, []);
+    entry.marcas.get(mar)!.push(p);
   }
   const gruposColeccion = [...porColeccion.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([col, mp]) => ({
-      col,
-      total: [...mp.values()].reduce((s, arr) => s + arr.length, 0),
-      marcas: [...mp.entries()].sort((a, b) => a[0].localeCompare(b[0])),
-    }));
+    .map(([id, { nombre, marcas }]) => ({
+      id,
+      nombre,
+      total: [...marcas.values()].reduce((s, arr) => s + arr.length, 0),
+      marcas: [...marcas.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+    }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-8 text-white">
@@ -600,12 +609,34 @@ export default function ProductosPage() {
             <p className="rounded-xl border border-neutral-800 p-4 text-neutral-400">
               Todavía no hay productos.
             </p>
+          ) : coleccionVista === null ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {gruposColeccion.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setColeccionVista(g.id)}
+                  className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 text-left transition hover:border-neutral-600"
+                >
+                  <h3 className="text-lg font-semibold">{g.nombre}</h3>
+                  <p className="mt-3 text-3xl font-bold">{g.total}</p>
+                  <p className="text-xs text-neutral-500">productos</p>
+                </button>
+              ))}
+            </div>
           ) : (
-            <div className="space-y-10">
-              {gruposColeccion.map((grupo) => (
-                <div key={grupo.col} className="space-y-5">
-                  <h2 className="border-b border-neutral-800 pb-2 text-xl font-bold">
-                    {grupo.col}{" "}
+            <div className="space-y-6">
+              <button
+                onClick={() => setColeccionVista(null)}
+                className="text-sm text-neutral-400 hover:text-white"
+              >
+                ← Volver a colecciones
+              </button>
+              {gruposColeccion
+                .filter((grupo) => grupo.id === coleccionVista)
+                .map((grupo) => (
+                <div key={grupo.id} className="space-y-5">
+                  <h2 className="border-b border-neutral-800 pb-2 text-2xl font-bold">
+                    {grupo.nombre}{" "}
                     <span className="text-sm font-normal text-neutral-500">
                       ({grupo.total})
                     </span>
