@@ -27,6 +27,7 @@ type Talla = {
 type Producto = {
   id: string;
   nombre: string;
+  marca: string | null;
   precio: string;
   estado: string;
   destacado: boolean;
@@ -323,6 +324,24 @@ export default function ProductosPage() {
           .nombre
       : null;
 
+  // Agrupa la lista por colección y, dentro, por marca (para no amontonar).
+  const porColeccion = new Map<string, Map<string, Producto[]>>();
+  for (const p of productos) {
+    const col = p.colecciones[0]?.coleccion.nombre || "Sin colección";
+    const mar = (p.marca || "").trim() || "Otros";
+    if (!porColeccion.has(col)) porColeccion.set(col, new Map());
+    const mp = porColeccion.get(col)!;
+    if (!mp.has(mar)) mp.set(mar, []);
+    mp.get(mar)!.push(p);
+  }
+  const gruposColeccion = [...porColeccion.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([col, mp]) => ({
+      col,
+      total: [...mp.values()].reduce((s, arr) => s + arr.length, 0),
+      marcas: [...mp.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+    }));
+
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-8 text-white">
       <section className="mx-auto max-w-4xl space-y-8">
@@ -559,14 +578,33 @@ export default function ProductosPage() {
               Todavía no hay productos.
             </p>
           ) : (
-            <div className="grid gap-4">
-              {productos.map((producto) => {
-                const imagenPrincipal = producto.imagenes?.[0];
-                const tallasActivas = producto.variantes.filter(
-                  (variante) => variante.estado !== "ARCHIVADA"
-                );
+            <div className="space-y-10">
+              {gruposColeccion.map((grupo) => (
+                <div key={grupo.col} className="space-y-5">
+                  <h2 className="border-b border-neutral-800 pb-2 text-xl font-bold">
+                    {grupo.col}{" "}
+                    <span className="text-sm font-normal text-neutral-500">
+                      ({grupo.total})
+                    </span>
+                  </h2>
+                  {grupo.marcas.map(([marca, prods]) => (
+                    <div key={marca} className="space-y-3">
+                      {grupo.marcas.length > 1 && (
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+                          {marca}{" "}
+                          <span className="text-neutral-600">
+                            ({prods.length})
+                          </span>
+                        </h3>
+                      )}
+                      <div className="grid gap-4">
+                        {prods.map((producto) => {
+                          const imagenPrincipal = producto.imagenes?.[0];
+                          const tallasActivas = producto.variantes.filter(
+                            (variante) => variante.estado !== "ARCHIVADA"
+                          );
 
-                return (
+                          return (
                   <article
                     key={producto.id}
                     className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900"
@@ -676,8 +714,13 @@ export default function ProductosPage() {
                       </div>
                     </div>
                   </article>
-                );
-              })}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           )}
         </section>

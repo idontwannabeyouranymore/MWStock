@@ -15,6 +15,7 @@ type Variante = {
 type Producto = {
   id: string;
   nombre: string;
+  marca: string | null;
   estado: string;
   esSet?: boolean;
   colecciones: { coleccion: { id: string; nombre: string } }[];
@@ -114,6 +115,18 @@ export default function InventarioColeccionPage() {
     idsVariantes.has(m.variante.id)
   );
 
+  // Agrupa los productos por marca para no verlos amontonados.
+  const porMarca = new Map<string, Producto[]>();
+  for (const p of productos) {
+    const m = (p.marca || "").trim() || "Otros";
+    if (!porMarca.has(m)) porMarca.set(m, []);
+    porMarca.get(m)!.push(p);
+  }
+  const gruposMarca = [...porMarca.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0])
+  );
+  const agruparPorMarca = gruposMarca.length > 1;
+
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-8 text-white">
       <section className="mx-auto max-w-5xl space-y-8">
@@ -142,13 +155,22 @@ export default function InventarioColeccionPage() {
               Esta colección no tiene productos.
             </p>
           ) : (
-            <div className="grid gap-4">
-              {productos.map((producto) => {
-                const tallas = producto.variantes.filter(
-                  (v) => v.estado !== "ARCHIVADA"
-                );
+            <div className="space-y-8">
+              {gruposMarca.map(([marca, prods]) => (
+                <div key={marca} className="space-y-4">
+                  {agruparPorMarca && (
+                    <h3 className="border-b border-neutral-800 pb-2 text-sm font-semibold uppercase tracking-wider text-neutral-400">
+                      {marca}{" "}
+                      <span className="text-neutral-600">({prods.length})</span>
+                    </h3>
+                  )}
+                  <div className="grid gap-4">
+                    {prods.map((producto) => {
+                      const tallas = producto.variantes.filter(
+                        (v) => v.estado !== "ARCHIVADA"
+                      );
 
-                return (
+                      return (
                   <article
                     key={producto.id}
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
@@ -168,7 +190,7 @@ export default function InventarioColeccionPage() {
                           >
                             <div>
                               <p className="font-semibold">
-                                Talla {variante.talla}
+                                {variante.talla}
                                 {variante.color ? ` · ${variante.color}` : ""}
                               </p>
                               <p className="text-2xl font-bold">
@@ -202,8 +224,11 @@ export default function InventarioColeccionPage() {
                       </div>
                     )}
                   </article>
-                );
-              })}
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

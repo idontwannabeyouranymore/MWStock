@@ -15,11 +15,13 @@ type Variante = {
 type Producto = {
   id: string;
   nombre: string;
+  marca?: string | null;
   precio: string;
   estado: string;
   esSet?: boolean;
   imagenes: { url: string }[];
   variantes: Variante[];
+  colecciones?: { coleccion: { nombre: string } }[];
 };
 
 type SetVenta = {
@@ -332,6 +334,25 @@ export default function POSPage() {
     s.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  // Agrupa los productos del POS por sección y marca.
+  const gruposPOS = (() => {
+    const porCol = new Map<string, Map<string, Producto[]>>();
+    for (const p of productosFiltrados) {
+      const col = p.colecciones?.[0]?.coleccion.nombre || "Sin colección";
+      const mar = (p.marca || "").trim() || "Otros";
+      if (!porCol.has(col)) porCol.set(col, new Map());
+      const mp = porCol.get(col)!;
+      if (!mp.has(mar)) mp.set(mar, []);
+      mp.get(mar)!.push(p);
+    }
+    return [...porCol.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([col, mp]) => ({
+        col,
+        marcas: [...mp.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      }));
+  })();
+
   // --- Pantalla de ticket tras cobrar ---
   if (ventaHecha) {
     return (
@@ -483,12 +504,25 @@ export default function POSPage() {
                 No hay productos.
               </p>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {productosFiltrados.map((producto) => {
-                  const tallas = producto.variantes.filter(
-                    (v) => v.estado !== "ARCHIVADA"
-                  );
-                  return (
+              <div className="space-y-6">
+                {gruposPOS.map((grupo) => (
+                  <div key={grupo.col} className="space-y-3">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
+                      {grupo.col}
+                    </h3>
+                    {grupo.marcas.map(([marca, prods]) => (
+                      <div key={marca} className="space-y-2">
+                        {grupo.marcas.length > 1 && (
+                          <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                            {marca}
+                          </p>
+                        )}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {prods.map((producto) => {
+                            const tallas = producto.variantes.filter(
+                              (v) => v.estado !== "ARCHIVADA"
+                            );
+                            return (
                     <article
                       key={producto.id}
                       className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
@@ -538,8 +572,13 @@ export default function POSPage() {
                         })}
                       </div>
                     </article>
-                  );
-                })}
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </div>
