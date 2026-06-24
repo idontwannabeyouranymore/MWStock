@@ -6,14 +6,28 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Transformación de Cloudinary que quita el fondo y lo deja blanco.
+const TRANSF_FONDO_BLANCO = "e_background_removal,b_white";
+
+/**
+ * Inserta la transformación de fondo blanco en una URL de Cloudinary.
+ * Idempotente: no la agrega dos veces. Devuelve la URL igual si no es de Cloudinary.
+ */
+export function aplicarFondoBlanco(url: string): string {
+  if (!url.includes("/upload/")) return url;
+  if (url.includes("e_background_removal")) return url;
+  return url.replace("/upload/", `/upload/${TRANSF_FONDO_BLANCO}/`);
+}
+
 /**
  * Extrae el public_id de una URL de Cloudinary.
  * Ej: https://res.cloudinary.com/abc/image/upload/v123/mwstock/productos/xyz.jpg
  *  ->  mwstock/productos/xyz
- * Funciona porque las subidas no usan transformaciones en la URL.
+ * Ignora la transformación de fondo blanco si está presente.
  */
 export function publicIdDesdeUrl(url: string): string | null {
-  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+  const limpia = url.replace(`/upload/${TRANSF_FONDO_BLANCO}/`, "/upload/");
+  const match = limpia.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
   return match ? match[1] : null;
 }
 

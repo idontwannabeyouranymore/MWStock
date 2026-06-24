@@ -41,8 +41,14 @@ se importa (reusa el importador que ya existe).
 
 ## Fase 2 — Imágenes con IA
 
-- Cloudinary (ya contratado): **quita-fondo** + **reemplazo de fondo** automático.
-- Carga masiva: **emparejar fotos con productos** por visión.
+- **2a — Fondo blanco automático** ✅ COMPLETA
+  - [x] Módulo `iaFondoBlanco` (toggle por tienda).
+  - [x] Al subir foto de producto, se le aplica `e_background_removal,b_white` de
+    Cloudinary y se guarda esa URL.
+  - [x] Aplica a fotos **nuevas**; las existentes se vuelven a subir para procesarlas.
+  - Requisito: que el plan de Cloudinary tenga disponible el quita-fondo.
+- **2b — Carga masiva emparejada** (pendiente)
+  - Subir muchas fotos de golpe y que la IA empareje cada una con su producto por visión.
 - Riesgo: **bajo**. Valor: **alto** (quita la talacha de subir foto por foto).
 - Depende de: Fase 0.
 

@@ -11,7 +11,8 @@ export type ClaveModulo =
   | "tandas"
   | "sets"
   | "marcas"
-  | "iaInventario";
+  | "iaInventario"
+  | "iaFondoBlanco";
 
 export type Modulos = Record<ClaveModulo, boolean>;
 
@@ -87,6 +88,13 @@ export const MODULOS: {
     etiqueta: "IA: foto a inventario",
     descripcion:
       "Sube una foto de tu lista y la IA la convierte en productos para importar.",
+    porDefecto: false,
+  },
+  {
+    clave: "iaFondoBlanco",
+    etiqueta: "IA: fondo blanco en fotos",
+    descripcion:
+      "A cada foto de producto que subas se le pone fondo blanco automáticamente.",
     porDefecto: false,
   },
 ];

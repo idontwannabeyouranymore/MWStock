@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { eliminarDeCloudinary } from "@/lib/cloudinary";
+import { eliminarDeCloudinary, aplicarFondoBlanco } from "@/lib/cloudinary";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { normalizarModulos } from "@/lib/modulos";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -72,8 +73,12 @@ export async function POST(request: Request, context: RouteContext) {
     orden = total;
   }
 
+  // Si la tienda tiene activo el fondo blanco, se lo aplicamos a la foto.
+  const mods = normalizarModulos(tienda.modulos);
+  const url = mods.iaFondoBlanco ? aplicarFondoBlanco(body.url) : body.url;
+
   const imagen = await prisma.productoImagen.create({
-    data: { productoId: id, url: body.url, orden },
+    data: { productoId: id, url, orden },
   });
 
   return NextResponse.json(imagen, { status: 201 });
