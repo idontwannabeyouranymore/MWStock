@@ -76,6 +76,7 @@ model Tienda {
   clientes    Cliente[]
   deudas      Deuda[]
   tandas      Tanda[]
+  usoIA       UsoIA[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -424,4 +425,20 @@ model TandaPago {
   @@unique([periodoId, participanteId])
   @@index([periodoId])
   @@index([participanteId])
+}
+
+// Registro de cada uso de IA por tienda (sirve de log y para el límite de uso).
+model UsoIA {
+  id        String   @id @default(cuid())
+  funcion   String
+  exito     Boolean  @default(true)
+  detalle   String?
+
+  tiendaId  String
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tiendaId])
+  @@index([createdAt])
 }

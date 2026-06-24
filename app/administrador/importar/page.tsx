@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { normalizarModulos } from "@/lib/modulos";
 
 type Fila = {
   categoria: string;
@@ -95,6 +96,67 @@ export default function ImportarPage() {
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [error, setError] = useState("");
+
+  const [iaActivo, setIaActivo] = useState(false);
+  const [procesandoIA, setProcesandoIA] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/tienda")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setIaActivo(normalizarModulos(d.modulos).iaInventario);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function alElegirFotos(e: React.ChangeEvent<HTMLInputElement>) {
+    setError("");
+    setResultado(null);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setProcesandoIA(true);
+    try {
+      const fd = new FormData();
+      files.slice(0, 5).forEach((f) => fd.append("fotos", f));
+      const r = await fetch("/api/ia/extraer-productos", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "No se pudo leer la foto");
+      setFilas(Array.isArray(data.filas) ? data.filas : []);
+      setNombreArchivo(`${files.length} foto(s) · leídas con IA`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error");
+      setFilas([]);
+    } finally {
+      setProcesandoIA(false);
+      e.target.value = "";
+    }
+  }
+
+  function descargarCSV() {
+    if (filas.length === 0) return;
+    const esc = (v: string) =>
+      /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+    const lineas = [
+      COLUMNAS.join(","),
+      ...filas.map((f) =>
+        [f.categoria, f.marca, f.nombre, f.presentacion, f.precio, f.stock]
+          .map((v) => esc(v ?? ""))
+          .join(",")
+      ),
+    ];
+    const blob = new Blob([lineas.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventario-desde-foto.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   function descargarPlantilla() {
     const blob = new Blob([PLANTILLA], { type: "text/csv;charset=utf-8;" });
@@ -192,6 +254,33 @@ export default function ImportarPage() {
           </button>
         </div>
 
+        {/* Subir foto con IA */}
+        {iaActivo && (
+          <div className="rounded-2xl border border-emerald-800 bg-emerald-950/20 p-5">
+            <h2 className="font-semibold text-emerald-300">
+              ✨ Subir foto de tu lista (IA)
+            </h2>
+            <p className="mt-2 text-sm text-neutral-400">
+              ¿No tienes Excel? Toma una foto clara de tu lista (escrita a mano o
+              impresa) y la IA la convierte en productos. <strong>Revisa el
+              resultado antes de importar</strong> — la IA puede equivocarse.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={alElegirFotos}
+              disabled={procesandoIA}
+              className="mt-3 block w-full text-sm text-neutral-400 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:font-semibold file:text-black hover:file:bg-emerald-400 disabled:opacity-50"
+            />
+            {procesandoIA && (
+              <p className="mt-3 text-sm text-emerald-300">
+                Leyendo la foto con IA… tarda unos segundos.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Subir archivo */}
         <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
           <label className="text-sm text-neutral-300">Archivo CSV</label>
@@ -240,13 +329,24 @@ export default function ImportarPage() {
                 </p>
               )}
 
-              <button
-                onClick={importar}
-                disabled={importando}
-                className="mt-4 w-full rounded-xl bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {importando ? "Importando..." : `Importar ${filas.length} filas`}
-              </button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <button
+                  onClick={importar}
+                  disabled={importando}
+                  className="flex-1 rounded-xl bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {importando
+                    ? "Importando..."
+                    : `Importar ${filas.length} filas`}
+                </button>
+                <button
+                  onClick={descargarCSV}
+                  type="button"
+                  className="rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold hover:border-white"
+                >
+                  Descargar CSV para revisar
+                </button>
+              </div>
             </>
           )}
 

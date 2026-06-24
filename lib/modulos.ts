@@ -10,7 +10,8 @@ export type ClaveModulo =
   | "clientes"
   | "tandas"
   | "sets"
-  | "marcas";
+  | "marcas"
+  | "iaInventario";
 
 export type Modulos = Record<ClaveModulo, boolean>;
 
@@ -79,6 +80,13 @@ export const MODULOS: {
     etiqueta: "Catálogo por marca",
     descripcion:
       "El cliente navega Categoría → Marca → Producto en el catálogo público.",
+    porDefecto: false,
+  },
+  {
+    clave: "iaInventario",
+    etiqueta: "IA: foto a inventario",
+    descripcion:
+      "Sube una foto de tu lista y la IA la convierte en productos para importar.",
     porDefecto: false,
   },
 ];
