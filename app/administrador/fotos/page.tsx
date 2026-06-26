@@ -6,7 +6,6 @@ type Producto = {
   id: string;
   nombre: string;
   marca: string | null;
-  esSet?: boolean;
   estado: string;
 };
 
@@ -25,7 +24,7 @@ export default function FotosMasivasPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Producto[]) => {
         if (Array.isArray(data)) {
-          setProductos(data.filter((p) => !p.esSet && p.estado !== "ARCHIVADO"));
+          setProductos(data.filter((p) => p.estado !== "ARCHIVADO"));
         }
       })
       .catch(() => {});

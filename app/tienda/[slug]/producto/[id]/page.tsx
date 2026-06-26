@@ -34,9 +34,6 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
           createdAt: "asc",
         },
       },
-      componentes: {
-        include: { variante: { include: { producto: true } } },
-      },
       colecciones: {
         include: {
           coleccion: true,
@@ -73,12 +70,7 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
     0
   );
 
-  const esSetProd = producto.esSet;
-
-  const soldOut = esSetProd
-    ? producto.componentes.length === 0 ||
-      producto.componentes.some((c) => c.variante.stock < c.cantidad)
-    : producto.estado === "AGOTADO" || stockTotal === 0;
+  const soldOut = producto.estado === "AGOTADO" || stockTotal === 0;
 
   const nuevo = estilo.badges && esNuevo(producto.createdAt) && !soldOut;
   const destacado = estilo.badges && producto.destacado;
@@ -87,11 +79,11 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
     Number(v.precio ?? producto.precio)
   );
   const precioMin =
-    esSetProd || preciosPres.length === 0
+    preciosPres.length === 0
       ? Number(producto.precio)
       : Math.min(...preciosPres);
   const precioMax =
-    esSetProd || preciosPres.length === 0
+    preciosPres.length === 0
       ? Number(producto.precio)
       : Math.max(...preciosPres);
 
@@ -148,89 +140,47 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
             )}
 
             <div className="space-y-3">
-              {esSetProd ? (
-                <>
-                  <h2 className="text-lg font-semibold">
-                    {estilo.emojis ? "🎁 " : ""}Incluye
-                  </h2>
-                  {producto.componentes.length === 0 ? (
-                    <p className="text-neutral-500">
-                      Este set no tiene componentes.
-                    </p>
-                  ) : (
-                    <div className="grid gap-3">
-                      {producto.componentes.map((c) => (
-                        <div
-                          key={c.id}
-                          className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3"
-                        >
-                          <p className="font-semibold">
-                            {c.variante.producto.nombre}{" "}
-                            <span className="text-neutral-400">
-                              ({c.variante.talla})
-                            </span>
-                          </p>
-                          <span
-                            className={
-                              c.variante.stock >= c.cantidad
-                                ? "text-sm font-semibold text-white"
-                                : "text-sm font-semibold text-red-400"
-                            }
-                          >
-                            {c.variante.stock >= c.cantidad
-                              ? "Disponible"
-                              : "Sin stock"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+              <h2 className="text-lg font-semibold">
+                {estilo.emojis ? "📏 " : ""}
+                Presentaciones
+              </h2>
+
+              {producto.variantes.length === 0 ? (
+                <p className="text-neutral-500">Sin presentaciones.</p>
               ) : (
-                <>
-                  <h2 className="text-lg font-semibold">
-                    {estilo.emojis ? "📏 " : ""}
-                    Presentaciones
-                  </h2>
-
-                  {producto.variantes.length === 0 ? (
-                    <p className="text-neutral-500">Sin presentaciones.</p>
-                  ) : (
-                    <div className="grid gap-3">
-                      {producto.variantes.map((variante) => (
-                        <div
-                          key={variante.id}
-                          className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3"
+                <div className="grid gap-3">
+                  {producto.variantes.map((variante) => (
+                    <div
+                      key={variante.id}
+                      className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-semibold">{variante.talla}</p>
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: colorTema }}
                         >
-                          <div>
-                            <p className="font-semibold">{variante.talla}</p>
-                            <p
-                              className="text-sm font-semibold"
-                              style={{ color: colorTema }}
-                            >
-                              $
-                              {Number(
-                                variante.precio ?? producto.precio
-                              ).toFixed(2)}
-                            </p>
-                          </div>
+                          $
+                          {Number(
+                            variante.precio ?? producto.precio
+                          ).toFixed(2)}
+                        </p>
+                      </div>
 
-                          <span
-                            className={
-                              variante.stock > 0
-                                ? "text-sm font-semibold text-white"
-                                : "text-sm font-semibold text-neutral-500"
-                            }
-                          >
-                            {variante.stock > 0
-                              ? `${variante.stock} disponible(s)`
-                              : "Agotado"}
-                          </span>
-                        </div>
-                      ))}
+                      <span
+                        className={
+                          variante.stock > 0
+                            ? "text-sm font-semibold text-white"
+                            : "text-sm font-semibold text-neutral-500"
+                        }
+                      >
+                        {variante.stock > 0
+                          ? `${variante.stock} disponible(s)`
+                          : "Agotado"}
+                      </span>
                     </div>
-                  )}
-                </>
+                  ))}
+                </div>
               )}
             </div>
 

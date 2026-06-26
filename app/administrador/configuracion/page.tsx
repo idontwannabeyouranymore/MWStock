@@ -401,9 +401,9 @@ export default function ConfiguracionPage() {
           </h2>
           <p className="text-sm text-neutral-400">
             Borra TODO el catálogo e historial de esta tienda: productos,
-            presentaciones, colecciones, sets, ventas, corte, clientes, deudas
-            y tandas. Conserva tu cuenta y esta configuración. Úsalo para
-            limpiar los datos de prueba. No se puede deshacer.
+            presentaciones, colecciones, ventas y corte. Conserva tu cuenta y
+            esta configuración. Úsalo para limpiar los datos de prueba. No se
+            puede deshacer.
           </p>
           <p className="text-sm text-neutral-300">
             Escribe <span className="font-bold">BORRAR</span> para confirmar:

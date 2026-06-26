@@ -83,9 +83,6 @@ model Tienda {
   colecciones Coleccion[]
   productos   Producto[]
   ventas      Venta[]
-  clientes    Cliente[]
-  deudas      Deuda[]
-  tandas      Tanda[]
   usoIA       UsoIA[]
   retiros     RetiroCaja[]
 
@@ -121,7 +118,6 @@ model Producto {
   precio       Decimal        @db.Decimal(10, 2)
   estado       EstadoProducto @default(ACTIVO)
   destacado    Boolean        @default(false)
-  esSet        Boolean        @default(false)
   fechaIngreso DateTime       @default(now())
 
   tiendaId     String
@@ -130,8 +126,6 @@ model Producto {
   imagenes     ProductoImagen[]
   variantes    Variante[]
   colecciones  ProductoColeccion[]
-  componentes  SetComponente[]    @relation("SetDeProducto")
-  recompensasTanda TandaPeriodo[] @relation("ProductoRecompensa")
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -168,8 +162,6 @@ model Variante {
 
   movimientos MovimientoInventario[]
   ventaItems  VentaItem[]
-  enSets      SetComponente[]
-  recompensasTanda TandaPeriodo[] @relation("VarianteRecompensa")
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -212,90 +204,10 @@ model MovimientoInventario {
   @@index([createdAt])
 }
 
-model SetComponente {
-  id         String   @id @default(cuid())
-
-  setId      String
-  set        Producto @relation("SetDeProducto", fields: [setId], references: [id])
-
-  varianteId String
-  variante   Variante @relation(fields: [varianteId], references: [id])
-
-  cantidad   Int      @default(1)
-  createdAt  DateTime @default(now())
-
-  @@index([setId])
-  @@index([varianteId])
-}
-
 enum MetodoPago {
   EFECTIVO
   TARJETA
   TRANSFERENCIA
-  FIADO
-}
-
-enum EstadoDeuda {
-  PENDIENTE
-  PAGADA
-}
-
-model Cliente {
-  id        String   @id @default(cuid())
-  nombre    String
-  telefono  String?
-  nota      String?
-
-  tiendaId  String
-  tienda    Tienda   @relation(fields: [tiendaId], references: [id])
-
-  ventas    Venta[]
-  deudas    Deuda[]
-  tandas    TandaParticipante[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tiendaId])
-}
-
-model Deuda {
-  id        String      @id @default(cuid())
-  concepto  String
-  monto     Decimal     @db.Decimal(10, 2)
-  saldo     Decimal     @db.Decimal(10, 2)
-  estado    EstadoDeuda @default(PENDIENTE)
-
-  tiendaId  String
-  tienda    Tienda      @relation(fields: [tiendaId], references: [id])
-
-  clienteId String
-  cliente   Cliente     @relation(fields: [clienteId], references: [id])
-
-  ventaId   String?     @unique
-  venta     Venta?      @relation(fields: [ventaId], references: [id])
-
-  abonos    Abono[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tiendaId])
-  @@index([clienteId])
-  @@index([estado])
-}
-
-model Abono {
-  id        String   @id @default(cuid())
-  monto     Decimal  @db.Decimal(10, 2)
-  nota      String?
-
-  deudaId   String
-  deuda     Deuda    @relation(fields: [deudaId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@index([deudaId])
 }
 
 model Venta {
@@ -311,17 +223,11 @@ model Venta {
   tiendaId        String
   tienda          Tienda     @relation(fields: [tiendaId], references: [id])
 
-  clienteId       String?
-  cliente         Cliente?   @relation(fields: [clienteId], references: [id])
-
-  deuda           Deuda?
-
   items           VentaItem[]
 
   createdAt       DateTime   @default(now())
 
   @@index([tiendaId])
-  @@index([clienteId])
   @@index([createdAt])
 }
 
@@ -345,100 +251,6 @@ model VentaItem {
   createdAt      DateTime  @default(now())
 
   @@index([ventaId])
-}
-
-// === TANDAS (cundina rotativa) ===
-
-enum FrecuenciaTanda {
-  SEMANAL
-  QUINCENAL
-  MENSUAL
-}
-
-enum EstadoTanda {
-  ACTIVA
-  FINALIZADA
-  CANCELADA
-}
-
-model Tanda {
-  id          String          @id @default(cuid())
-  nombre      String
-  cuota       Decimal         @db.Decimal(10, 2)
-  frecuencia  FrecuenciaTanda @default(SEMANAL)
-  fechaInicio DateTime        @default(now())
-  estado      EstadoTanda     @default(ACTIVA)
-
-  tiendaId    String
-  tienda      Tienda          @relation(fields: [tiendaId], references: [id])
-
-  participantes TandaParticipante[]
-  periodos      TandaPeriodo[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([tiendaId])
-}
-
-model TandaParticipante {
-  id        String   @id @default(cuid())
-  turno     Int      // Periodo (1..N) en el que recibe el perfume.
-
-  tandaId   String
-  tanda     Tanda    @relation(fields: [tandaId], references: [id])
-
-  clienteId String
-  cliente   Cliente  @relation(fields: [clienteId], references: [id])
-
-  pagos     TandaPago[]
-
-  createdAt DateTime @default(now())
-
-  @@unique([tandaId, turno])
-  @@index([tandaId])
-  @@index([clienteId])
-}
-
-model TandaPeriodo {
-  id         String   @id @default(cuid())
-  numero     Int      // 1..N. Recibe el participante con turno == numero.
-  fecha      DateTime
-  entregado  Boolean  @default(false)
-
-  tandaId    String
-  tanda      Tanda    @relation(fields: [tandaId], references: [id])
-
-  // Perfume asignado como recompensa de este periodo.
-  productoId String?
-  producto   Producto?  @relation("ProductoRecompensa", fields: [productoId], references: [id])
-  varianteId String?
-  variante   Variante?  @relation("VarianteRecompensa", fields: [varianteId], references: [id])
-
-  pagos      TandaPago[]
-
-  createdAt  DateTime @default(now())
-
-  @@unique([tandaId, numero])
-  @@index([tandaId])
-}
-
-model TandaPago {
-  id             String    @id @default(cuid())
-  pagado         Boolean   @default(false)
-  fechaPago      DateTime?
-
-  periodoId      String
-  periodo        TandaPeriodo @relation(fields: [periodoId], references: [id])
-
-  participanteId String
-  participante   TandaParticipante @relation(fields: [participanteId], references: [id])
-
-  createdAt      DateTime @default(now())
-
-  @@unique([periodoId, participanteId])
-  @@index([periodoId])
-  @@index([participanteId])
 }
 
 // Registro de cada uso de IA por tienda (sirve de log y para el límite de uso).

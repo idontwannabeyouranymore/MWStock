@@ -26,23 +26,13 @@ export async function POST(request: Request) {
       await tx.ventaItem.deleteMany({ where: { venta: { tiendaId } } });
       await tx.venta.deleteMany({ where: { tiendaId } });
 
-      // Fiado
-      await tx.abono.deleteMany({ where: { deuda: { tiendaId } } });
-      await tx.deuda.deleteMany({ where: { tiendaId } });
-
-      // Tandas
-      await tx.tandaPago.deleteMany({
-        where: { periodo: { tanda: { tiendaId } } },
-      });
-      await tx.tandaPeriodo.deleteMany({ where: { tanda: { tiendaId } } });
-      await tx.tandaParticipante.deleteMany({ where: { tanda: { tiendaId } } });
-      await tx.tanda.deleteMany({ where: { tiendaId } });
+      // Caja
+      await tx.retiroCaja.deleteMany({ where: { tiendaId } });
 
       // Inventario / catálogo
       await tx.movimientoInventario.deleteMany({
         where: { variante: { producto: { tiendaId } } },
       });
-      await tx.setComponente.deleteMany({ where: { set: { tiendaId } } });
       await tx.productoImagen.deleteMany({
         where: { producto: { tiendaId } },
       });
@@ -52,8 +42,7 @@ export async function POST(request: Request) {
       await tx.variante.deleteMany({ where: { producto: { tiendaId } } });
       await tx.producto.deleteMany({ where: { tiendaId } });
 
-      // Clientes y colecciones
-      await tx.cliente.deleteMany({ where: { tiendaId } });
+      // Colecciones
       await tx.coleccion.deleteMany({ where: { tiendaId } });
     });
 

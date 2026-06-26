@@ -7,9 +7,6 @@ export type ClaveModulo =
   | "pos"
   | "ventas"
   | "corte"
-  | "clientes"
-  | "tandas"
-  | "sets"
   | "marcas"
   | "iaInventario"
   | "iaFondoBlanco"
@@ -61,24 +58,6 @@ export const MODULOS: {
     etiqueta: "Corte de caja",
     descripcion: "Cierre del día por método de pago.",
     porDefecto: true,
-  },
-  {
-    clave: "clientes",
-    etiqueta: "Clientes y fiado",
-    descripcion: "Clientes, deudas y abonos.",
-    porDefecto: false,
-  },
-  {
-    clave: "tandas",
-    etiqueta: "Tandas",
-    descripcion: "Cundinas rotativas con entrega de producto.",
-    porDefecto: false,
-  },
-  {
-    clave: "sets",
-    etiqueta: "Sets",
-    descripcion: "Paquetes/kits de varias presentaciones.",
-    porDefecto: false,
   },
   {
     clave: "marcas",

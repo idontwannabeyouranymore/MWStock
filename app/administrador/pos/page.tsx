@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { normalizarModulos } from "@/lib/modulos";
 import EscanerCodigo from "@/components/EscanerCodigo";
 
 type Variante = {
@@ -20,22 +19,12 @@ type Producto = {
   codigoBarras?: string | null;
   precio: string;
   estado: string;
-  esSet?: boolean;
   imagenes: { url: string }[];
   variantes: Variante[];
   colecciones?: { coleccion: { nombre: string } }[];
 };
 
-type SetVenta = {
-  id: string;
-  nombre: string;
-  precio: string;
-  imagenes: { url: string }[];
-  componentes: { cantidad: number; variante: { stock: number } }[];
-};
-
 type ItemCarrito = {
-  tipo: "variante" | "set";
   refId: string;
   productoNombre: string;
   talla: string;
@@ -69,28 +58,11 @@ const METODOS = [
   { valor: "EFECTIVO", etiqueta: "Efectivo" },
   { valor: "TARJETA", etiqueta: "Tarjeta" },
   { valor: "TRANSFERENCIA", etiqueta: "Transferencia" },
-  { valor: "FIADO", etiqueta: "Fiado" },
 ];
-
-type ClienteLista = {
-  id: string;
-  nombre: string;
-  telefono: string | null;
-  saldoTotal: number;
-};
-
-function maxDeSet(set: SetVenta) {
-  if (set.componentes.length === 0) return 0;
-  return Math.min(
-    ...set.componentes.map((c) => Math.floor(c.variante.stock / c.cantidad))
-  );
-}
 
 export default function POSPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [sets, setSets] = useState<SetVenta[]>([]);
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
-  const [clientesActivo, setClientesActivo] = useState(false);
   const [caja, setCaja] = useState<{
     efectivoEnCaja: number;
     peligro: boolean;
@@ -108,44 +80,21 @@ export default function POSPage() {
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
 
-  const [clientes, setClientes] = useState<ClienteLista[]>([]);
-  const [clienteId, setClienteId] = useState("");
-  const [creandoCliente, setCreandoCliente] = useState(false);
-  const [nuevoNombre, setNuevoNombre] = useState("");
-  const [nuevoTelefono, setNuevoTelefono] = useState("");
-
   const [procesando, setProcesando] = useState(false);
   const [ventaHecha, setVentaHecha] = useState<VentaHecha | null>(null);
 
   const cargarProductos = useCallback(async () => {
     const response = await fetch("/api/productos");
     const data: Producto[] = await response.json();
-    setProductos(data.filter((p) => p.estado !== "ARCHIVADO" && !p.esSet));
-  }, []);
-
-  const cargarSets = useCallback(async () => {
-    const response = await fetch("/api/sets");
-    if (!response.ok) return;
-    const data: SetVenta[] = await response.json();
-    if (Array.isArray(data)) setSets(data);
-  }, []);
-
-  const cargarClientes = useCallback(async () => {
-    const response = await fetch("/api/clientes");
-    if (!response.ok) return;
-    const data: ClienteLista[] = await response.json();
-    if (Array.isArray(data)) setClientes(data);
+    setProductos(data.filter((p) => p.estado !== "ARCHIVADO"));
   }, []);
 
   useEffect(() => {
     cargarProductos();
-    cargarSets();
-    cargarClientes();
     fetch("/api/tienda")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
-        setClientesActivo(normalizarModulos(d?.modulos).clientes);
       })
       .catch(() => {});
     fetch("/api/caja")
@@ -154,27 +103,7 @@ export default function POSPage() {
         if (d && !d.error) setCaja(d);
       })
       .catch(() => {});
-  }, [cargarProductos, cargarSets, cargarClientes]);
-
-  async function crearClienteRapido() {
-    const nombre = nuevoNombre.trim();
-    if (!nombre) return;
-    const response = await fetch("/api/clientes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, telefono: nuevoTelefono }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      alert(data.error || "No se pudo crear el cliente");
-      return;
-    }
-    await cargarClientes();
-    setClienteId(data.id);
-    setCreandoCliente(false);
-    setNuevoNombre("");
-    setNuevoTelefono("");
-  }
+  }, [cargarProductos]);
 
   function agregarAlCarrito(producto: Producto, variante: Variante) {
     setCarrito((actual) => {
@@ -188,7 +117,6 @@ export default function POSPage() {
       return [
         ...actual,
         {
-          tipo: "variante",
           refId: variante.id,
           productoNombre: producto.nombre,
           talla: variante.talla,
@@ -227,32 +155,6 @@ export default function POSPage() {
     setBusqueda("");
   }
 
-  function agregarSetAlCarrito(set: SetVenta) {
-    const maxSets = maxDeSet(set);
-    if (maxSets < 1) return;
-    setCarrito((actual) => {
-      const existente = actual.find((i) => i.refId === set.id);
-      if (existente) {
-        if (existente.cantidad >= maxSets) return actual;
-        return actual.map((i) =>
-          i.refId === set.id ? { ...i, cantidad: i.cantidad + 1 } : i
-        );
-      }
-      return [
-        ...actual,
-        {
-          tipo: "set",
-          refId: set.id,
-          productoNombre: set.nombre,
-          talla: "Set",
-          precio: Number(set.precio),
-          cantidad: 1,
-          stock: maxSets,
-        },
-      ];
-    });
-  }
-
   function cambiarCantidad(refId: string, delta: number) {
     setCarrito((actual) =>
       actual
@@ -287,30 +189,20 @@ export default function POSPage() {
       alert("El monto recibido es menor al total");
       return;
     }
-    if (metodoPago === "FIADO" && !clienteId) {
-      alert("Para fiar, selecciona o crea un cliente registrado");
-      return;
-    }
-
     setProcesando(true);
     try {
       const response = await fetch("/api/ventas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: carrito.map((i) =>
-            i.tipo === "set"
-              ? { tipo: "set", setId: i.refId, cantidad: i.cantidad }
-              : { tipo: "variante", varianteId: i.refId, cantidad: i.cantidad }
-          ),
+          items: carrito.map((i) => ({
+            varianteId: i.refId,
+            cantidad: i.cantidad,
+          })),
           metodoPago,
-          montoRecibido:
-            metodoPago === "EFECTIVO" || metodoPago === "FIADO"
-              ? montoRecibido
-              : null,
+          montoRecibido: metodoPago === "EFECTIVO" ? montoRecibido : null,
           referencia:
             metodoPago === "TRANSFERENCIA" ? referencia.trim() || null : null,
-          clienteId: clienteId || null,
           clienteNombre,
           clienteTelefono,
         }),
@@ -327,14 +219,8 @@ export default function POSPage() {
       setReferencia("");
       setClienteNombre("");
       setClienteTelefono("");
-      setClienteId("");
-      setCreandoCliente(false);
-      setNuevoNombre("");
-      setNuevoTelefono("");
       setMetodoPago("EFECTIVO");
       await cargarProductos();
-      await cargarSets();
-      await cargarClientes();
       fetch("/api/caja")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
@@ -386,9 +272,6 @@ export default function POSPage() {
 
   const productosFiltrados = productos.filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
-  const setsFiltrados = sets.filter((s) =>
-    s.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   // Agrupa los productos del POS por sección y marca.
@@ -502,7 +385,7 @@ export default function POSPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Productos y sets */}
+          {/* Productos */}
           <div className="space-y-4">
             {caja && (
               <div
@@ -571,58 +454,7 @@ export default function POSPage() {
               />
             )}
 
-            {setsFiltrados.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
-                  Sets
-                </h2>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {setsFiltrados.map((set) => {
-                    const max = maxDeSet(set);
-                    const agotado = max < 1;
-                    return (
-                      <article
-                        key={set.id}
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
-                      >
-                        <div className="flex gap-3">
-                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-800">
-                            {set.imagenes[0] ? (
-                              <img
-                                src={set.imagenes[0].url}
-                                alt={set.nombre}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold leading-tight">
-                              {set.nombre}
-                            </h3>
-                            <p className="text-sm text-neutral-400">
-                              ${Number(set.precio).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          disabled={agotado}
-                          onClick={() => agregarSetAlCarrito(set)}
-                          className={`mt-3 w-full rounded-lg px-3 py-2 text-sm font-semibold ${
-                            agotado
-                              ? "cursor-not-allowed bg-neutral-800 text-neutral-600"
-                              : "bg-white text-black hover:bg-neutral-200"
-                          }`}
-                        >
-                          {agotado ? "Agotado" : `Agregar set (${max} disp.)`}
-                        </button>
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {productosFiltrados.length === 0 && setsFiltrados.length === 0 ? (
+            {productosFiltrados.length === 0 ? (
               <p className="rounded-xl border border-neutral-800 p-4 text-neutral-400">
                 No hay productos.
               </p>
@@ -712,13 +544,13 @@ export default function POSPage() {
 
             {carrito.length === 0 ? (
               <p className="text-sm text-neutral-500">
-                Toca un producto o set para agregarlo.
+                Toca un producto para agregarlo.
               </p>
             ) : (
               <div className="space-y-3">
                 {carrito.map((item) => (
                   <div
-                    key={`${item.tipo}-${item.refId}`}
+                    key={item.refId}
                     className="rounded-xl border border-neutral-800 bg-neutral-950 p-3"
                   >
                     <div className="flex justify-between gap-2">
@@ -770,17 +602,13 @@ export default function POSPage() {
             <div className="space-y-2">
               <label className="text-sm text-neutral-300">Método de pago</label>
               <div className="grid grid-cols-2 gap-2">
-                {METODOS.filter(
-                  (m) => clientesActivo || m.valor !== "FIADO"
-                ).map((metodo) => (
+                {METODOS.map((metodo) => (
                   <button
                     key={metodo.valor}
                     onClick={() => setMetodoPago(metodo.valor)}
                     className={`rounded-lg px-2 py-2 text-sm font-semibold ${
                       metodoPago === metodo.valor
-                        ? metodo.valor === "FIADO"
-                          ? "bg-amber-500 text-black"
-                          : "bg-white text-black"
+                        ? "bg-white text-black"
                         : "bg-neutral-800 text-neutral-300"
                     }`}
                   >
@@ -808,12 +636,10 @@ export default function POSPage() {
               </div>
             )}
 
-            {(metodoPago === "EFECTIVO" || metodoPago === "FIADO") && (
+            {metodoPago === "EFECTIVO" && (
               <div className="space-y-2">
                 <label className="text-sm text-neutral-300">
-                  {metodoPago === "FIADO"
-                    ? "Enganche (opcional)"
-                    : "Monto recibido"}
+                  Monto recibido
                 </label>
                 <input
                   value={montoRecibido}
@@ -834,100 +660,29 @@ export default function POSPage() {
                       : `Cambio: $${cambio.toFixed(2)}`}
                   </p>
                 )}
-                {metodoPago === "FIADO" && recibido > 0 && (
-                  <p className="text-sm font-semibold text-amber-400">
-                    Quedará a deber: $
-                    {Math.max(0, total - recibido).toFixed(2)}
-                  </p>
-                )}
               </div>
             )}
 
             <div className="space-y-2 border-t border-neutral-800 pt-3">
               <label className="text-sm text-neutral-300">
-                Cliente{" "}
-                {clientesActivo && metodoPago === "FIADO" ? (
-                  <span className="text-amber-400">(requerido para fiar)</span>
-                ) : (
-                  "(opcional)"
-                )}
+                Cliente <span className="text-neutral-500">(opcional)</span>
               </label>
 
-              {clientesActivo && (
-                <>
-              {/* Selector de cliente registrado */}
-              <div className="flex gap-2">
-                <select
-                  value={clienteId}
-                  onChange={(e) => setClienteId(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-white outline-none focus:border-white"
-                >
-                  <option value="">— Cliente sin registrar —</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                      {c.saldoTotal > 0
-                        ? ` · debe $${c.saldoTotal.toFixed(2)}`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setCreandoCliente((v) => !v)}
-                  className="flex-shrink-0 rounded-xl bg-neutral-800 px-3 py-2 text-sm font-semibold text-white hover:bg-neutral-700"
-                >
-                  {creandoCliente ? "✕" : "+ Nuevo"}
-                </button>
-              </div>
-
-              {/* Alta rápida de cliente */}
-              {creandoCliente && (
-                <div className="space-y-2 rounded-xl border border-neutral-800 bg-neutral-950 p-3">
-                  <input
-                    value={nuevoNombre}
-                    onChange={(e) => setNuevoNombre(e.target.value)}
-                    placeholder="Nombre del cliente"
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-white outline-none focus:border-white"
-                  />
-                  <input
-                    value={nuevoTelefono}
-                    onChange={(e) => setNuevoTelefono(e.target.value)}
-                    placeholder="WhatsApp (ej. 5213312345678)"
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-white outline-none focus:border-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={crearClienteRapido}
-                    className="w-full rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-neutral-200"
-                  >
-                    Crear y seleccionar
-                  </button>
-                </div>
-              )}
-                </>
-              )}
-
-              {/* Datos sueltos para el ticket (solo si no hay cliente registrado) */}
-              {!clienteId && (
-                <>
-                  <input
-                    value={clienteNombre}
-                    onChange={(e) => setClienteNombre(e.target.value)}
-                    placeholder="Nombre (para el ticket)"
-                    className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2 text-white outline-none focus:border-white"
-                  />
-                  <input
-                    value={clienteTelefono}
-                    onChange={(e) => setClienteTelefono(e.target.value)}
-                    placeholder="WhatsApp con código de país (ej. 5213312345678)"
-                    className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2 text-white outline-none focus:border-white"
-                  />
-                  <p className="text-xs text-neutral-500">
-                    Si pones el teléfono, podrás enviar el ticket por WhatsApp.
-                  </p>
-                </>
-              )}
+              <input
+                value={clienteNombre}
+                onChange={(e) => setClienteNombre(e.target.value)}
+                placeholder="Nombre (para el ticket)"
+                className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2 text-white outline-none focus:border-white"
+              />
+              <input
+                value={clienteTelefono}
+                onChange={(e) => setClienteTelefono(e.target.value)}
+                placeholder="WhatsApp con código de país (ej. 5213312345678)"
+                className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2 text-white outline-none focus:border-white"
+              />
+              <p className="text-xs text-neutral-500">
+                Si pones el teléfono, podrás enviar el ticket por WhatsApp.
+              </p>
             </div>
 
             <button

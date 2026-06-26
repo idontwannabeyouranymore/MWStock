@@ -18,14 +18,10 @@ async function estadoCaja(tiendaId: string) {
 
   const inicio = inicioDiaMx();
 
-  const [ventas, abonos, retirosSum, retiros] = await Promise.all([
+  const [ventas, retirosSum, retiros] = await Promise.all([
     prisma.venta.aggregate({
       _sum: { total: true },
       where: { tiendaId, metodoPago: "EFECTIVO", createdAt: { gte: inicio } },
-    }),
-    prisma.abono.aggregate({
-      _sum: { monto: true },
-      where: { createdAt: { gte: inicio }, deuda: { tiendaId } },
     }),
     prisma.retiroCaja.aggregate({
       _sum: { monto: true },
@@ -43,17 +39,14 @@ async function estadoCaja(tiendaId: string) {
       ? Number(tienda.umbralCajaPeligro)
       : null;
   const efectivoVentasHoy = Number(ventas._sum.total ?? 0);
-  const abonosHoy = Number(abonos._sum.monto ?? 0);
   const retirosHoy = Number(retirosSum._sum.monto ?? 0);
-  const efectivoEnCaja =
-    fondoCaja + efectivoVentasHoy + abonosHoy - retirosHoy;
+  const efectivoEnCaja = fondoCaja + efectivoVentasHoy - retirosHoy;
   const peligro = umbral != null && efectivoEnCaja >= umbral;
 
   return {
     fondoCaja,
     umbralCajaPeligro: umbral,
     efectivoVentasHoy,
-    abonosHoy,
     retirosHoy,
     efectivoEnCaja,
     peligro,

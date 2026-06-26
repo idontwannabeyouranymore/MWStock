@@ -11,7 +11,6 @@ type ProductoBusqueda = {
   soldOut: boolean;
   precioMin: number;
   precioMax: number;
-  esSet: boolean;
   marca: string;
   coleccionIds: string[];
 };
@@ -249,11 +248,6 @@ export default function BuscadorCatalogo({
                         />
                       ) : (
                         <span className="text-neutral-500">Sin imagen</span>
-                      )}
-                      {p.esSet && (
-                        <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-bold text-black">
-                          Set
-                        </span>
                       )}
                       {p.soldOut && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/70">

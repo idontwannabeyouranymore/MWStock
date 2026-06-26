@@ -60,28 +60,21 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
     include: {
       imagenes: { orderBy: { orden: "asc" }, take: 1 },
       variantes: { where: { estado: { not: "ARCHIVADA" } } },
-      componentes: { include: { variante: true } },
       colecciones: { select: { coleccionId: true } },
     },
     orderBy: { nombre: "asc" },
   });
 
   const productosBusqueda = productosTienda.map((p) => {
-    const soldOut = p.esSet
-      ? p.componentes.length === 0 ||
-        p.componentes.some((c) => c.variante.stock < c.cantidad)
-      : p.estado === "AGOTADO" ||
-        p.variantes.reduce((t, v) => t + v.stock, 0) === 0;
+    const soldOut =
+      p.estado === "AGOTADO" ||
+      p.variantes.reduce((t, v) => t + v.stock, 0) === 0;
 
     const precios = p.variantes.map((v) => Number(v.precio ?? p.precio));
     const precioMin =
-      p.esSet || precios.length === 0
-        ? Number(p.precio)
-        : Math.min(...precios);
+      precios.length === 0 ? Number(p.precio) : Math.min(...precios);
     const precioMax =
-      p.esSet || precios.length === 0
-        ? Number(p.precio)
-        : Math.max(...precios);
+      precios.length === 0 ? Number(p.precio) : Math.max(...precios);
 
     return {
       id: p.id,
@@ -90,7 +83,6 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       soldOut,
       precioMin,
       precioMax,
-      esSet: p.esSet,
       marca: p.marca ?? "",
       coleccionIds: p.colecciones.map((c) => c.coleccionId),
     };

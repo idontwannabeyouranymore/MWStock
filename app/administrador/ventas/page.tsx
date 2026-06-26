@@ -33,7 +33,6 @@ const METODO_ETIQUETA: Record<string, string> = {
   EFECTIVO: "Efectivo",
   TARJETA: "Tarjeta",
   TRANSFERENCIA: "Transferencia",
-  FIADO: "Fiado",
 };
 
 export default function VentasPage() {

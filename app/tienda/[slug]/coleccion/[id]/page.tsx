@@ -60,9 +60,6 @@ export default async function ColeccionPublicaPage({
                 where: { estado: { not: "ARCHIVADA" } },
                 orderBy: { createdAt: "asc" },
               },
-              componentes: {
-                include: { variante: { include: { producto: true } } },
-              },
             },
           },
         },
@@ -195,7 +192,6 @@ export default async function ColeccionPublicaPage({
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {productosFiltrados.map((producto, indice) => {
-              const esSetProd = producto.esSet;
               const variantesActivas = producto.variantes as VariantePublica[];
 
               const stockTotal = variantesActivas.reduce(
@@ -203,12 +199,8 @@ export default async function ColeccionPublicaPage({
                 0
               );
 
-              const soldOut = esSetProd
-                ? producto.componentes.length === 0 ||
-                  producto.componentes.some(
-                    (c) => c.variante.stock < c.cantidad
-                  )
-                : producto.estado === "AGOTADO" || stockTotal === 0;
+              const soldOut =
+                producto.estado === "AGOTADO" || stockTotal === 0;
 
               const imagenPrincipal = producto.imagenes[0];
               const nuevo = estilo.badges && esNuevo(producto.createdAt);
@@ -218,11 +210,11 @@ export default async function ColeccionPublicaPage({
                 Number(v.precio ?? producto.precio)
               );
               const precioMin =
-                esSetProd || precios.length === 0
+                precios.length === 0
                   ? Number(producto.precio)
                   : Math.min(...precios);
               const precioMax =
-                esSetProd || precios.length === 0
+                precios.length === 0
                   ? Number(producto.precio)
                   : Math.max(...precios);
 
@@ -248,11 +240,6 @@ export default async function ColeccionPublicaPage({
                       )}
 
                       <div className="absolute left-3 top-3 flex flex-col gap-2">
-                        {esSetProd && (
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-black shadow">
-                            {estilo.emojis ? "🎁 " : ""}Set
-                          </span>
-                        )}
                         {destacado && (
                           <span className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold text-black shadow">
                             {estilo.emojis ? "⭐ " : ""}Destacado
@@ -292,51 +279,37 @@ export default async function ColeccionPublicaPage({
                       </p>
 
                       <div className="space-y-2">
-                        {esSetProd ? (
-                          <>
-                            <p className="text-sm font-semibold text-neutral-300">
-                              Incluye
-                            </p>
-                            <p className="text-sm text-neutral-400">
-                              {producto.componentes.length} decants en el
-                              paquete
-                            </p>
-                          </>
+                        <p className="text-sm font-semibold text-neutral-300">
+                          Presentaciones
+                        </p>
+                        {variantesActivas.length === 0 ? (
+                          <p className="text-sm text-neutral-500">
+                            Sin presentaciones
+                          </p>
                         ) : (
-                          <>
-                            <p className="text-sm font-semibold text-neutral-300">
-                              Presentaciones
-                            </p>
-                            {variantesActivas.length === 0 ? (
-                              <p className="text-sm text-neutral-500">
-                                Sin presentaciones
-                              </p>
-                            ) : (
-                              <div className="flex flex-wrap gap-2">
-                                {variantesActivas.map((variante) => (
-                                  <span
-                                    key={variante.id}
-                                    className="rounded-full px-3 py-1 text-xs font-semibold transition"
-                                    style={{
-                                      backgroundColor:
-                                        variante.stock > 0
-                                          ? colorTema
-                                          : "#262626",
-                                      color:
-                                        variante.stock > 0
-                                          ? "#000000"
-                                          : "#737373",
-                                    }}
-                                  >
-                                    {variante.talla}{" "}
-                                    {variante.stock > 0
-                                      ? `(${variante.stock})`
-                                      : "(0)"}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </>
+                          <div className="flex flex-wrap gap-2">
+                            {variantesActivas.map((variante) => (
+                              <span
+                                key={variante.id}
+                                className="rounded-full px-3 py-1 text-xs font-semibold transition"
+                                style={{
+                                  backgroundColor:
+                                    variante.stock > 0
+                                      ? colorTema
+                                      : "#262626",
+                                  color:
+                                    variante.stock > 0
+                                      ? "#000000"
+                                      : "#737373",
+                                }}
+                              >
+                                {variante.talla}{" "}
+                                {variante.stock > 0
+                                  ? `(${variante.stock})`
+                                  : "(0)"}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

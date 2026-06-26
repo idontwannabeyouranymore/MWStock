@@ -17,7 +17,6 @@ type Producto = {
   nombre: string;
   marca: string | null;
   estado: string;
-  esSet?: boolean;
   colecciones: { coleccion: { id: string; nombre: string } }[];
   variantes: Variante[];
 };
@@ -54,7 +53,6 @@ export default function InventarioColeccionPage() {
     const deColeccion = data.filter(
       (producto) =>
         producto.estado !== "ARCHIVADO" &&
-        !producto.esSet &&
         producto.colecciones.some((pc) => pc.coleccion.id === coleccionId)
     );
 

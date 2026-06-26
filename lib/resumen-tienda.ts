@@ -11,7 +11,7 @@ export async function resumenTienda(tiendaId: string) {
   const mes0 = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const hace90 = new Date(ahora.getTime() - 90 * 24 * 3600 * 1000);
 
-  const [ventas90, totalHist, topItems, variantes, totalProductos, agotados, deudas] =
+  const [ventas90, totalHist, topItems, variantes, totalProductos, agotados] =
     await Promise.all([
       prisma.venta.findMany({
         where: { tiendaId, createdAt: { gte: hace90 } },
@@ -39,14 +39,9 @@ export async function resumenTienda(tiendaId: string) {
         },
       }),
       prisma.producto.count({
-        where: { tiendaId, esSet: false, estado: { not: "ARCHIVADO" } },
+        where: { tiendaId, estado: { not: "ARCHIVADO" } },
       }),
       prisma.producto.count({ where: { tiendaId, estado: "AGOTADO" } }),
-      prisma.deuda.aggregate({
-        where: { tiendaId, estado: "PENDIENTE" },
-        _sum: { saldo: true },
-        _count: true,
-      }),
     ]);
 
   const agg = (lista: { total: unknown }[]) => ({
@@ -64,7 +59,6 @@ export async function resumenTienda(tiendaId: string) {
     EFECTIVO: 0,
     TARJETA: 0,
     TRANSFERENCIA: 0,
-    FIADO: 0,
   };
   for (const v of ventas90) {
     if (v.createdAt >= mes0) {
@@ -110,10 +104,6 @@ export async function resumenTienda(tiendaId: string) {
       piezasEnStock: piezas,
       valorInventario,
       stockBajo,
-    },
-    fiadoPendiente: {
-      total: num(deudas._sum.saldo),
-      cuentas: deudas._count,
     },
   };
 }

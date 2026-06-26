@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { normalizarModulos } from "@/lib/modulos";
 
 type VentaItem = {
   productoNombre: string;
@@ -19,18 +18,10 @@ type Venta = {
   createdAt: string;
   items: VentaItem[];
 };
-type Abono = {
-  id: string;
-  monto: string;
-  nota: string | null;
-  createdAt: string;
-  clienteNombre: string;
-};
 type CajaEstado = {
   fondoCaja: number;
   umbralCajaPeligro: number | null;
   efectivoVentasHoy: number;
-  abonosHoy: number;
   retirosHoy: number;
   efectivoEnCaja: number;
   peligro: boolean;
@@ -60,16 +51,13 @@ const METODO_LABEL: Record<string, string> = {
   EFECTIVO: "Efectivo",
   TARJETA: "Tarjeta",
   TRANSFERENCIA: "Transferencia",
-  FIADO: "Fiado",
 };
 
 export default function CortePage() {
   const [ventas, setVentas] = useState<Venta[]>([]);
-  const [abonos, setAbonos] = useState<Abono[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fecha, setFecha] = useState(ymdLocal(new Date()));
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
-  const [clientesActivo, setClientesActivo] = useState(false);
   const [caja, setCaja] = useState<CajaEstado | null>(null);
   const [fondoInput, setFondoInput] = useState("");
   const [umbralInput, setUmbralInput] = useState("");
@@ -161,12 +149,7 @@ export default function CortePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
-        setClientesActivo(normalizarModulos(d?.modulos).clientes);
       })
-      .catch(() => {});
-    fetch("/api/abonos")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setAbonos(Array.isArray(d) ? d : []))
       .catch(() => {});
   }, []);
 
@@ -180,15 +163,10 @@ export default function CortePage() {
       EFECTIVO: { conteo: 0, monto: 0 },
       TARJETA: { conteo: 0, monto: 0 },
       TRANSFERENCIA: { conteo: 0, monto: 0 },
-      FIADO: { conteo: 0, valor: 0, enganche: 0 },
     };
     for (const v of delDia) {
       const total = Number(v.total);
-      if (v.metodoPago === "FIADO") {
-        base.FIADO.conteo += 1;
-        base.FIADO.valor += total;
-        base.FIADO.enganche += Number(v.montoRecibido || 0);
-      } else if (v.metodoPago === "TARJETA") {
+      if (v.metodoPago === "TARJETA") {
         base.TARJETA.conteo += 1;
         base.TARJETA.monto += total;
       } else if (v.metodoPago === "TRANSFERENCIA") {
@@ -199,33 +177,16 @@ export default function CortePage() {
         base.EFECTIVO.monto += total;
       }
     }
-    // Abonos cobrados este día (incluye los enganches de los fiados de hoy,
-    // por eso NO sumamos base.FIADO.enganche aparte: evitamos duplicar).
-    const abonosDelDia = abonos.filter(
-      (a) => ymdLocal(new Date(a.createdAt)) === fecha
-    );
-    const sumAbonos = abonosDelDia.reduce((s, a) => s + Number(a.monto), 0);
 
     const recibido =
-      base.EFECTIVO.monto +
-      base.TARJETA.monto +
-      base.TRANSFERENCIA.monto +
-      sumAbonos;
-    const vendido =
-      base.EFECTIVO.monto +
-      base.TARJETA.monto +
-      base.TRANSFERENCIA.monto +
-      base.FIADO.valor;
-    const pendiente = base.FIADO.valor - base.FIADO.enganche;
+      base.EFECTIVO.monto + base.TARJETA.monto + base.TRANSFERENCIA.monto;
+    const vendido = recibido;
     return {
       base,
       recibido,
       vendido,
-      pendiente,
-      sumAbonos,
-      abonosCount: abonosDelDia.length,
     };
-  }, [delDia, abonos, fecha]);
+  }, [delDia]);
 
   function moverDia(delta: number) {
     const d = new Date(fecha + "T12:00:00");
@@ -313,10 +274,6 @@ export default function CortePage() {
                     + Efectivo de ventas (hoy)
                   </span>
                   <span>${caja.efectivoVentasHoy.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">+ Abonos (hoy)</span>
-                  <span>${caja.abonosHoy.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">− Retiros (hoy)</span>
@@ -461,37 +418,6 @@ export default function CortePage() {
                     </span>
                   </div>
                 ))}
-                {clientesActivo && (
-                  <>
-                    <div className="flex justify-between border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-300">
-                        Fiado — a crédito{" "}
-                        <span className="text-neutral-500">
-                          ({resumen.base.FIADO.conteo})
-                        </span>
-                      </span>
-                      <span className="text-right">
-                        <span className="font-semibold text-amber-400">
-                          ${resumen.base.FIADO.valor.toFixed(2)}
-                        </span>
-                        <span className="block text-xs text-neutral-500">
-                          no entra a caja
-                        </span>
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-300">
-                        Abonos cobrados hoy{" "}
-                        <span className="text-neutral-500">
-                          ({resumen.abonosCount})
-                        </span>
-                      </span>
-                      <span className="font-semibold text-green-400">
-                        ${resumen.sumAbonos.toFixed(2)}
-                      </span>
-                    </div>
-                  </>
-                )}
               </div>
 
               <div className="mt-4 space-y-1 text-sm">
@@ -501,16 +427,6 @@ export default function CortePage() {
                     ${resumen.recibido.toFixed(2)}
                   </span>
                 </div>
-                {clientesActivo && (
-                  <div className="flex justify-between">
-                    <span className="text-neutral-400">
-                      Quedó por cobrar (fiado)
-                    </span>
-                    <span className="font-bold text-amber-400">
-                      ${resumen.pendiente.toFixed(2)}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -561,13 +477,6 @@ export default function CortePage() {
               )}
             </div>
 
-            {clientesActivo && (
-              <p className="text-xs text-neutral-600">
-                &quot;Recibido en caja&quot; = efectivo + tarjeta +
-                transferencia + abonos cobrados hoy (incluye enganches). El
-                fiado a crédito no entra a caja hasta que se abona.
-              </p>
-            )}
           </>
         )}
       </section>

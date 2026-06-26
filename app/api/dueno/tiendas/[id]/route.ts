@@ -75,25 +75,17 @@ export async function DELETE(_request: Request, context: RouteContext) {
   await prisma.$transaction(async (tx) => {
     await tx.ventaItem.deleteMany({ where: { venta: { tiendaId: id } } });
     await tx.venta.deleteMany({ where: { tiendaId: id } });
-    await tx.abono.deleteMany({ where: { deuda: { tiendaId: id } } });
-    await tx.deuda.deleteMany({ where: { tiendaId: id } });
-    await tx.tandaPago.deleteMany({
-      where: { periodo: { tanda: { tiendaId: id } } },
-    });
-    await tx.tandaPeriodo.deleteMany({ where: { tanda: { tiendaId: id } } });
-    await tx.tandaParticipante.deleteMany({ where: { tanda: { tiendaId: id } } });
-    await tx.tanda.deleteMany({ where: { tiendaId: id } });
+    await tx.retiroCaja.deleteMany({ where: { tiendaId: id } });
+    await tx.usoIA.deleteMany({ where: { tiendaId: id } });
     await tx.movimientoInventario.deleteMany({
       where: { variante: { producto: { tiendaId: id } } },
     });
-    await tx.setComponente.deleteMany({ where: { set: { tiendaId: id } } });
     await tx.productoImagen.deleteMany({ where: { producto: { tiendaId: id } } });
     await tx.productoColeccion.deleteMany({
       where: { producto: { tiendaId: id } },
     });
     await tx.variante.deleteMany({ where: { producto: { tiendaId: id } } });
     await tx.producto.deleteMany({ where: { tiendaId: id } });
-    await tx.cliente.deleteMany({ where: { tiendaId: id } });
     await tx.coleccion.deleteMany({ where: { tiendaId: id } });
     await tx.tienda.delete({ where: { id } });
     if (tienda.usuario) {

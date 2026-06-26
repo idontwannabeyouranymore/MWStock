@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     const productos = await prisma.producto.findMany({
-      where: { tiendaId: tienda.id, esSet: false, estado: { not: "ARCHIVADO" } },
+      where: { tiendaId: tienda.id, estado: { not: "ARCHIVADO" } },
       select: { id: true, nombre: true, marca: true },
       orderBy: { nombre: "asc" },
     });

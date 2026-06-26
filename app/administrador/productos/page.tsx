@@ -35,7 +35,6 @@ type Producto = {
   precio: string;
   estado: string;
   destacado: boolean;
-  esSet?: boolean;
   imagenes: { id: string; url: string }[];
   variantes: Variante[];
   colecciones: { coleccion: Coleccion }[];
@@ -75,10 +74,7 @@ export default function ProductosPage() {
     const response = await fetch("/api/productos");
     const data = await response.json();
     setProductos(
-      data.filter(
-        (producto: Producto) =>
-          producto.estado !== "ARCHIVADO" && !producto.esSet
-      )
+      data.filter((producto: Producto) => producto.estado !== "ARCHIVADO")
     );
   }
 
