@@ -251,6 +251,25 @@ export default function ProductosPage() {
     }
   }
 
+  // Al escribir/elegir la marca: si esa marca ya existe y vive en una sola
+  // sección (colección), seleccionamos esa sección automáticamente para que el
+  // producto no termine en otra distinta.
+  function manejarCambioMarca(valor: string) {
+    setMarca(valor);
+    const limpio = valor.trim().toLowerCase();
+    if (!limpio) return;
+    const conMarca = productos.filter(
+      (p) => (p.marca || "").trim().toLowerCase() === limpio
+    );
+    if (conMarca.length === 0) return;
+    const cols = new Set(
+      conMarca
+        .map((p) => p.colecciones[0]?.coleccion.id)
+        .filter((id): id is string => !!id)
+    );
+    if (cols.size === 1) setColeccionId([...cols][0]);
+  }
+
   function limpiarFormulario() {
     setNombre("");
     setMarca("");
@@ -480,7 +499,7 @@ export default function ProductosPage() {
               </label>
               <input
                 value={marca}
-                onChange={(event) => setMarca(event.target.value)}
+                onChange={(event) => manejarCambioMarca(event.target.value)}
                 placeholder="Ej. Nike, 31 Hats, Adidas..."
                 list="marcas-lista"
                 className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
