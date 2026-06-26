@@ -44,6 +44,18 @@ export async function middleware(request: NextRequest) {
       : NextResponse.redirect(new URL("/administrador", request.url));
   }
 
+  // Vendedor: dentro del panel solo puede ver el POS y su cuenta (sin estadísticas).
+  if (
+    payload.rol === "VENDEDOR" &&
+    pathname.startsWith("/administrador") &&
+    !pathname.startsWith("/administrador/pos") &&
+    !pathname.startsWith("/administrador/cuenta")
+  ) {
+    return NextResponse.redirect(
+      new URL("/administrador/pos", request.url)
+    );
+  }
+
   return NextResponse.next();
 }
 

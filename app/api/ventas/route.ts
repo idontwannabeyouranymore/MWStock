@@ -244,6 +244,10 @@ export async function POST(request: Request) {
           metodoPago,
           montoRecibido,
           cambio,
+          referencia:
+            metodoPago === "TRANSFERENCIA" && body.referencia
+              ? String(body.referencia).trim() || null
+              : null,
           clienteNombre: cliente ? cliente.nombre : clienteNombre,
           clienteTelefono: cliente ? cliente.telefono : clienteTelefono,
           tiendaId: tienda.id,

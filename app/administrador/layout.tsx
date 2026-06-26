@@ -1,5 +1,5 @@
 import AdminSidebar from "@/components/AdminSidebar";
-import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { obtenerTiendaDeSesion, obtenerRol } from "@/lib/auth";
 
 export default async function AdminLayout({
   children,
@@ -7,6 +7,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const tienda = await obtenerTiendaDeSesion();
+  const rol = await obtenerRol();
 
   // Si la tienda está suspendida, bloquea el panel.
   if (tienda && !tienda.activa) {
@@ -25,7 +26,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-neutral-950 md:flex">
-      <AdminSidebar />
+      <AdminSidebar rol={rol} />
 
       <div className="min-w-0 flex-1 overflow-auto">{children}</div>
     </div>

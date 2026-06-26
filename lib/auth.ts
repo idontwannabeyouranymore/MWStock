@@ -34,9 +34,28 @@ export async function obtenerTiendaDeSesion() {
     return null;
   }
 
-  return prisma.tienda.findUnique({
-    where: { usuarioId },
+  // Admin/dueño: la tienda que poseen.
+  const propia = await prisma.tienda.findUnique({ where: { usuarioId } });
+  if (propia) return propia;
+
+  // Vendedor: la tienda donde trabaja.
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { tiendaTrabajoId: true },
   });
+  if (usuario?.tiendaTrabajoId) {
+    return prisma.tienda.findUnique({ where: { id: usuario.tiendaTrabajoId } });
+  }
+
+  return null;
+}
+
+/**
+ * Devuelve el rol del usuario en sesión ("ADMIN" | "DUENO" | "VENDEDOR") o null.
+ */
+export async function obtenerRol(): Promise<string | null> {
+  const sesion = await obtenerSesion();
+  return typeof sesion?.rol === "string" ? sesion.rol : null;
 }
 
 /**

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { configEstilo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import BuscadorCatalogo from "@/components/BuscadorCatalogo";
+import { normalizarModulos } from "@/lib/modulos";
 
 type PageProps = {
   params: Promise<{
@@ -90,9 +91,12 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       precioMin,
       precioMax,
       esSet: p.esSet,
+      marca: p.marca ?? "",
       coleccionIds: p.colecciones.map((c) => c.coleccionId),
     };
   });
+
+  const mods = normalizarModulos(tienda.modulos);
 
   const colecciones = tienda.colecciones.map((coleccion) => {
     const productosActivos = coleccion.productos.filter(
@@ -194,6 +198,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
             slug={slug}
             colorTema={colorTema}
             emojis={estilo.emojis}
+            iaActivo={mods.iaBusqueda}
           />
         </div>
 

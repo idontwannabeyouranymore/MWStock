@@ -56,6 +56,7 @@ type VentaHecha = {
   metodoPago: string;
   montoRecibido: string | null;
   cambio: string | null;
+  referencia: string | null;
   clienteNombre: string | null;
   clienteTelefono: string | null;
   createdAt: string;
@@ -94,6 +95,7 @@ export default function POSPage() {
 
   const [metodoPago, setMetodoPago] = useState("EFECTIVO");
   const [montoRecibido, setMontoRecibido] = useState("");
+  const [referencia, setReferencia] = useState("");
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
 
@@ -264,6 +266,8 @@ export default function POSPage() {
             metodoPago === "EFECTIVO" || metodoPago === "FIADO"
               ? montoRecibido
               : null,
+          referencia:
+            metodoPago === "TRANSFERENCIA" ? referencia.trim() || null : null,
           clienteId: clienteId || null,
           clienteNombre,
           clienteTelefono,
@@ -278,6 +282,7 @@ export default function POSPage() {
       setVentaHecha(data);
       setCarrito([]);
       setMontoRecibido("");
+      setReferencia("");
       setClienteNombre("");
       setClienteTelefono("");
       setClienteId("");
@@ -309,6 +314,10 @@ export default function POSPage() {
     let texto = `*${tiendaNombre}*\nTicket de compra\n\n${lineas}\n\nTotal: $${Number(
       venta.total
     ).toFixed(2)}\nPago: ${venta.metodoPago}`;
+
+    if (venta.referencia) {
+      texto += `\nRef: ${venta.referencia}`;
+    }
 
     if (venta.montoRecibido) {
       texto += `\nRecibido: $${Number(venta.montoRecibido).toFixed(
@@ -391,6 +400,12 @@ export default function POSPage() {
                 <span>Pago</span>
                 <span>{ventaHecha.metodoPago}</span>
               </div>
+              {ventaHecha.referencia && (
+                <div className="flex justify-between text-neutral-400">
+                  <span>Referencia</span>
+                  <span>{ventaHecha.referencia}</span>
+                </div>
+              )}
               {ventaHecha.montoRecibido && (
                 <>
                   <div className="flex justify-between text-neutral-400">
@@ -666,6 +681,24 @@ export default function POSPage() {
                 ))}
               </div>
             </div>
+
+            {metodoPago === "TRANSFERENCIA" && (
+              <div className="space-y-2">
+                <label className="text-sm text-neutral-300">
+                  Referencia / # de transacción
+                </label>
+                <input
+                  value={referencia}
+                  onChange={(e) => setReferencia(e.target.value)}
+                  placeholder="Folio o referencia de la transferencia"
+                  className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+                />
+                <p className="text-xs text-neutral-500">
+                  Mientras conectamos Mercado Pago, anota aquí la referencia para
+                  conciliar después.
+                </p>
+              </div>
+            )}
 
             {(metodoPago === "EFECTIVO" || metodoPago === "FIADO") && (
               <div className="space-y-2">

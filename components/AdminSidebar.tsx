@@ -12,10 +12,12 @@ import {
 // mod = null -> siempre visible. mod = clave -> visible solo si el módulo está activo.
 const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
   { href: "/administrador", label: "Dashboard", mod: null },
+  { href: "/administrador/asistente", label: "Asistente IA", mod: "iaAnalista" },
   { href: "/administrador/pos", label: "Punto de venta", mod: "pos" },
   { href: "/administrador/colecciones", label: "Colecciones", mod: "colecciones" },
   { href: "/administrador/productos", label: "Productos", mod: null },
   { href: "/administrador/importar", label: "Importar", mod: "importar" },
+  { href: "/administrador/fotos", label: "Fotos (IA)", mod: "iaEmparejarFotos" },
   { href: "/administrador/sets", label: "Sets", mod: "sets" },
   { href: "/administrador/inventario", label: "Inventario", mod: "inventario" },
   { href: "/administrador/ventas", label: "Ventas", mod: "ventas" },
@@ -23,11 +25,12 @@ const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
   { href: "/administrador/clientes", label: "Clientes", mod: "clientes" },
   { href: "/administrador/tandas", label: "Tandas", mod: "tandas" },
   { href: "/administrador/qr", label: "Código QR", mod: null },
+  { href: "/administrador/vendedores", label: "Vendedores", mod: null },
   { href: "/administrador/configuracion", label: "Configuración", mod: null },
   { href: "/administrador/cuenta", label: "Mi cuenta", mod: null },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ rol }: { rol?: string | null }) {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
   const [modulos, setModulos] = useState<Modulos | null>(null);
@@ -46,10 +49,17 @@ export default function AdminSidebar() {
       .catch(() => {});
   }, []);
 
-  // Mientras carga, muestra solo los siempre-visibles para evitar parpadeo.
-  const linksMostrar = links.filter(
-    (l) => l.mod === null || (modulos ? modulos[l.mod] : false)
-  );
+  // El vendedor solo ve el POS y su cuenta. El admin ve según sus módulos.
+  const linksMostrar =
+    rol === "VENDEDOR"
+      ? links.filter(
+          (l) =>
+            l.href === "/administrador/pos" ||
+            l.href === "/administrador/cuenta"
+        )
+      : links.filter(
+          (l) => l.mod === null || (modulos ? modulos[l.mod] : false)
+        );
 
   return (
     <>

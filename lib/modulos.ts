@@ -12,7 +12,11 @@ export type ClaveModulo =
   | "sets"
   | "marcas"
   | "iaInventario"
-  | "iaFondoBlanco";
+  | "iaFondoBlanco"
+  | "iaEmparejarFotos"
+  | "iaBusqueda"
+  | "iaAnalista"
+  | "iaContenido";
 
 export type Modulos = Record<ClaveModulo, boolean>;
 
@@ -95,6 +99,34 @@ export const MODULOS: {
     etiqueta: "IA: fondo blanco en fotos",
     descripcion:
       "A cada foto de producto que subas se le pone fondo blanco automáticamente.",
+    porDefecto: false,
+  },
+  {
+    clave: "iaEmparejarFotos",
+    etiqueta: "IA: emparejar fotos en lote",
+    descripcion:
+      "Sube muchas fotos de golpe y la IA las asigna al producto correcto.",
+    porDefecto: false,
+  },
+  {
+    clave: "iaBusqueda",
+    etiqueta: "IA: búsqueda inteligente",
+    descripcion:
+      "En el catálogo, el cliente busca en lenguaje natural (ej. 'gorra negra menos de $1500').",
+    porDefecto: false,
+  },
+  {
+    clave: "iaAnalista",
+    etiqueta: "IA: asistente del dueño",
+    descripcion:
+      "Chat para preguntar sobre tus ventas e inventario con datos reales.",
+    porDefecto: false,
+  },
+  {
+    clave: "iaContenido",
+    etiqueta: "IA: generador de contenido",
+    descripcion:
+      "Genera descripciones de producto y posts para redes con un clic.",
     porDefecto: false,
   },
 ];

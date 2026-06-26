@@ -7,9 +7,16 @@ export const LIMITE_DIARIO = Number(process.env.IA_LIMITE_DIARIO || 30);
 export const LIMITE_MENSUAL = Number(process.env.IA_LIMITE_MENSUAL || 300);
 
 // Revisa si la tienda todavía puede usar la IA hoy / este mes.
+// Se puede limitar por función (cada una con su propio presupuesto) y con límites
+// distintos (la búsqueda pública usa límites más altos que las cargas del dueño).
 export async function revisarLimiteIA(
-  tiendaId: string
+  tiendaId: string,
+  opciones?: { funcion?: string; diario?: number; mensual?: number }
 ): Promise<{ ok: boolean; mensaje?: string }> {
+  const diario = opciones?.diario ?? LIMITE_DIARIO;
+  const mensual = opciones?.mensual ?? LIMITE_MENSUAL;
+  const whereFn = opciones?.funcion ? { funcion: opciones.funcion } : {};
+
   const ahora = new Date();
   const inicioDia = new Date(
     ahora.getFullYear(),
@@ -20,23 +27,23 @@ export async function revisarLimiteIA(
 
   const [hoy, mes] = await Promise.all([
     prisma.usoIA.count({
-      where: { tiendaId, createdAt: { gte: inicioDia } },
+      where: { tiendaId, ...whereFn, createdAt: { gte: inicioDia } },
     }),
     prisma.usoIA.count({
-      where: { tiendaId, createdAt: { gte: inicioMes } },
+      where: { tiendaId, ...whereFn, createdAt: { gte: inicioMes } },
     }),
   ]);
 
-  if (hoy >= LIMITE_DIARIO) {
+  if (hoy >= diario) {
     return {
       ok: false,
-      mensaje: `Llegaste al límite de ${LIMITE_DIARIO} usos de IA por hoy. Intenta de nuevo mañana.`,
+      mensaje: `Llegaste al límite de ${diario} usos de IA por hoy. Intenta de nuevo mañana.`,
     };
   }
-  if (mes >= LIMITE_MENSUAL) {
+  if (mes >= mensual) {
     return {
       ok: false,
-      mensaje: `Llegaste al límite de ${LIMITE_MENSUAL} usos de IA este mes.`,
+      mensaje: `Llegaste al límite de ${mensual} usos de IA este mes.`,
     };
   }
   return { ok: true };

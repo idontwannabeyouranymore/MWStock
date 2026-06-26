@@ -47,35 +47,51 @@ se importa (reusa el importador que ya existe).
     Cloudinary y se guarda esa URL.
   - [x] Aplica a fotos **nuevas**; las existentes se vuelven a subir para procesarlas.
   - Requisito: que el plan de Cloudinary tenga disponible el quita-fondo.
-- **2b — Carga masiva emparejada** (pendiente)
-  - Subir muchas fotos de golpe y que la IA empareje cada una con su producto por visión.
-- Riesgo: **bajo**. Valor: **alto** (quita la talacha de subir foto por foto).
+- **2b — Carga masiva emparejada** ✅ COMPLETA
+  - [x] Módulo `iaEmparejarFotos` + pantalla `/administrador/fotos`.
+  - [x] Subes hasta 12 fotos; la IA propone a qué producto va cada una.
+  - [x] Revisas/corriges en un select por foto y guardas (sube + asigna; con fondo
+    blanco si ese módulo está activo).
+- Riesgo: **bajo** (el dueño revisa). Valor: **alto** (quita la talacha de subir foto por foto).
 - Depende de: Fase 0.
 
 ---
 
-## Fase 3 — Búsqueda en lenguaje natural (catálogo público)
+## Fase 3 — Búsqueda en lenguaje natural (catálogo público) ✅ COMPLETA
 
 El cliente busca "gorra negra de menos de $1,500" y la IA filtra el catálogo real.
 
+- [x] Módulo `iaBusqueda` (toggle por tienda).
+- [x] La IA convierte la frase en filtros (texto/categoría/marca/precio); **la app filtra
+  el catálogo real** (la IA no inventa productos).
+- [x] Botón "Buscar con IA" en el buscador, con **respaldo** a búsqueda normal si falla.
+- [x] Límite propio para búsqueda (más alto, porque es público) y registro de uso.
 - Riesgo: **medio** (lo ve el cliente, pero es solo lectura y anclado a datos reales).
 - Valor: **alto** (mejora ventas). Depende de: Fase 0.
 
 ---
 
-## Fase 4 — Analista por chat (para el dueño)
+## Fase 4 — Analista por chat (para el dueño) ✅ COMPLETA
 
 "¿Cuánto vendí esta semana?", "¿qué se me está agotando?" → respuestas con datos
 reales (la app da los números, la IA solo los presenta).
 
+- [x] Módulo `iaAnalista` + pantalla de chat `/administrador/asistente`.
+- [x] `lib/resumen-tienda.ts` calcula el snapshot real (ventas, top productos,
+  stock bajo, inventario, fiado).
+- [x] La IA responde **solo** con ese resumen; si no está el dato, lo dice (no inventa).
+- [x] Límite y registro de uso por tienda.
 - Riesgo: **bajo** (dueño, datos reales). Valor: **diferenciador** para cobrar más.
 - Depende de: Fase 0.
 
 ---
 
-## Fase 5 — Contenido generado
+## Fase 5 — Contenido generado ✅ COMPLETA
 
-- Descripciones de producto y posts de marketing (el dueño revisa/edita).
+- [x] Módulo `iaContenido`.
+- [x] En el formulario de productos: campo Descripción + botones "✨ Generar
+  descripción" y "✨ Generar post para redes" (el post sale en una caja para copiar).
+- [x] El dueño revisa/edita antes de guardar/publicar. Límite y registro de uso.
 - Riesgo: **bajo**. Valor: **medio**. Depende de: Fase 0.
 
 ---

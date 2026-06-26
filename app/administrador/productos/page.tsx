@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { normalizarModulos } from "@/lib/modulos";
 
 type Coleccion = {
   id: string;
@@ -28,6 +29,7 @@ type Producto = {
   id: string;
   nombre: string;
   marca: string | null;
+  descripcion: string | null;
   precio: string;
   estado: string;
   destacado: boolean;
@@ -43,8 +45,13 @@ export default function ProductosPage() {
 
   const [nombre, setNombre] = useState("");
   const [marca, setMarca] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [precio, setPrecio] = useState("");
   const [coleccionId, setColeccionId] = useState("");
+
+  const [iaContenido, setIaContenido] = useState(false);
+  const [generandoIA, setGenerandoIA] = useState(false);
+  const [postGenerado, setPostGenerado] = useState("");
 
   const [tallas, setTallas] = useState<Talla[]>([]);
   const [tallaInput, setTallaInput] = useState("");
@@ -207,6 +214,7 @@ export default function ProductosPage() {
           body: JSON.stringify({
             nombre,
             marca: marca.trim() || null,
+            descripcion: descripcion.trim() || null,
             precio: Number(precio),
           }),
         });
@@ -218,6 +226,7 @@ export default function ProductosPage() {
           body: JSON.stringify({
             nombre,
             marca: marca.trim() || null,
+            descripcion: descripcion.trim() || null,
             precio: Number(precio),
             coleccionIds: coleccionId ? [coleccionId] : [],
           }),
@@ -243,6 +252,8 @@ export default function ProductosPage() {
   function limpiarFormulario() {
     setNombre("");
     setMarca("");
+    setDescripcion("");
+    setPostGenerado("");
     setPrecio("");
     setTallas([]);
     setTallaInput("");
@@ -263,6 +274,8 @@ export default function ProductosPage() {
     setEditandoId(producto.id);
     setNombre(producto.nombre);
     setMarca(producto.marca ?? "");
+    setDescripcion(producto.descripcion ?? "");
+    setPostGenerado("");
     setPrecio(String(producto.precio));
     setColeccionId(producto.colecciones[0]?.coleccion.id ?? "");
     setTallas(
@@ -325,7 +338,43 @@ export default function ProductosPage() {
   useEffect(() => {
     obtenerProductos();
     obtenerColecciones();
+    fetch("/api/tienda")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setIaContenido(normalizarModulos(d.modulos).iaContenido);
+      })
+      .catch(() => {});
   }, []);
+
+  async function llamarContenido(tipo: "descripcion" | "post") {
+    if (!nombre.trim()) return;
+    setGenerandoIA(true);
+    try {
+      const r = await fetch("/api/ia/contenido", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo,
+          nombre,
+          marca,
+          categoria:
+            colecciones.find((c) => c.id === coleccionId)?.nombre || "",
+          precio,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        alert(data.error || "No se pudo generar");
+        return;
+      }
+      if (tipo === "descripcion") setDescripcion(data.texto || "");
+      else setPostGenerado(data.texto || "");
+    } catch {
+      alert("Error al generar el contenido");
+    } finally {
+      setGenerandoIA(false);
+    }
+  }
 
   const nombreColeccionEditando =
     editandoId && tallas
@@ -450,6 +499,58 @@ export default function ProductosPage() {
               <p className="text-xs text-neutral-500">
                 Se usa si una presentación no tiene precio propio.
               </p>
+            </div>
+
+            {/* Descripción */}
+            <div className="space-y-2">
+              <label className="text-sm text-neutral-300">
+                Descripción <span className="text-neutral-500">(opcional)</span>
+              </label>
+              <textarea
+                value={descripcion}
+                onChange={(event) => setDescripcion(event.target.value)}
+                placeholder="Texto que se muestra en el catálogo"
+                className="min-h-20 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+              />
+              {iaContenido && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => llamarContenido("descripcion")}
+                    disabled={generandoIA || !nombre.trim()}
+                    className="rounded-lg border border-emerald-700 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-950/40 disabled:opacity-40"
+                  >
+                    {generandoIA ? "Generando…" : "✨ Generar descripción"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => llamarContenido("post")}
+                    disabled={generandoIA || !nombre.trim()}
+                    className="rounded-lg border border-emerald-700 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-950/40 disabled:opacity-40"
+                  >
+                    {generandoIA ? "Generando…" : "✨ Generar post para redes"}
+                  </button>
+                </div>
+              )}
+              {postGenerado && (
+                <div className="rounded-xl border border-emerald-800 bg-emerald-950/20 p-3">
+                  <p className="mb-2 text-xs font-semibold text-emerald-300">
+                    Post para redes (cópialo y publícalo tú):
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm text-neutral-100">
+                    {postGenerado}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigator.clipboard?.writeText(postGenerado)
+                    }
+                    className="mt-2 rounded-lg bg-white px-3 py-1 text-xs font-semibold text-black"
+                  >
+                    Copiar
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Presentaciones / tallas */}

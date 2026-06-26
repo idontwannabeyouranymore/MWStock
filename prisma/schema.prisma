@@ -10,6 +10,7 @@ datasource db {
 enum RolUsuario {
   ADMIN
   DUENO
+  VENDEDOR
 }
 
 enum EstadoColeccion {
@@ -49,7 +50,11 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tienda    Tienda?
+  tienda    Tienda?  @relation("Propietario")
+
+  // Si es VENDEDOR: la tienda donde trabaja (no es dueño de ella).
+  tiendaTrabajoId String?
+  tiendaTrabajo   Tienda? @relation("Personal", fields: [tiendaTrabajoId], references: [id])
 }
 
 model Tienda {
@@ -68,7 +73,8 @@ model Tienda {
   modulos     Json?
 
   usuarioId   String   @unique
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  usuario     Usuario  @relation("Propietario", fields: [usuarioId], references: [id])
+  personal    Usuario[] @relation("Personal")
 
   colecciones Coleccion[]
   productos   Producto[]
@@ -291,6 +297,7 @@ model Venta {
   metodoPago      MetodoPago @default(EFECTIVO)
   montoRecibido   Decimal?   @db.Decimal(10, 2)
   cambio          Decimal?   @db.Decimal(10, 2)
+  referencia      String?
   clienteNombre   String?
   clienteTelefono String?
 

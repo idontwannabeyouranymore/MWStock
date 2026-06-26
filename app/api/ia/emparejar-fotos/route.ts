@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
 import { normalizarModulos } from "@/lib/modulos";
-import { extraerProductosDeImagenes, type FilaProducto } from "@/lib/ia";
+import { emparejarFotosConProductos } from "@/lib/ia";
 import { revisarLimiteIA, registrarUsoIA } from "@/lib/uso-ia";
 
 export async function POST(request: Request) {
@@ -12,16 +13,15 @@ export async function POST(request: Request) {
     }
 
     const mods = normalizarModulos(tienda.modulos);
-    if (!mods.iaInventario) {
+    if (!mods.iaEmparejarFotos) {
       return NextResponse.json(
         { error: "La herramienta de IA no está habilitada para esta tienda" },
         { status: 403 }
       );
     }
 
-    // Guardarraíl: límite de uso por tienda.
     const limite = await revisarLimiteIA(tienda.id, {
-      funcion: "foto-inventario",
+      funcion: "emparejar-fotos",
     });
     if (!limite.ok) {
       return NextResponse.json({ error: limite.mensaje }, { status: 429 });
@@ -34,13 +34,13 @@ export async function POST(request: Request) {
 
     if (archivos.length === 0) {
       return NextResponse.json(
-        { error: "Sube al menos una foto de tu lista" },
+        { error: "Sube al menos una foto" },
         { status: 400 }
       );
     }
-    if (archivos.length > 5) {
+    if (archivos.length > 12) {
       return NextResponse.json(
-        { error: "Máximo 5 fotos por intento" },
+        { error: "Máximo 12 fotos por intento" },
         { status: 400 }
       );
     }
@@ -60,13 +60,26 @@ export async function POST(request: Request) {
       });
     }
 
-    let filas: FilaProducto[];
+    const productos = await prisma.producto.findMany({
+      where: { tiendaId: tienda.id, esSet: false, estado: { not: "ARCHIVADO" } },
+      select: { id: true, nombre: true, marca: true },
+      orderBy: { nombre: "asc" },
+    });
+
+    if (productos.length === 0) {
+      return NextResponse.json(
+        { error: "No hay productos para emparejar. Crea o importa productos primero." },
+        { status: 400 }
+      );
+    }
+
+    let matches;
     try {
-      filas = await extraerProductosDeImagenes(imagenes);
+      matches = await emparejarFotosConProductos(imagenes, productos);
     } catch (errorIA) {
       await registrarUsoIA(
         tienda.id,
-        "foto-inventario",
+        "emparejar-fotos",
         false,
         errorIA instanceof Error ? errorIA.message : "error"
       );
@@ -75,23 +88,16 @@ export async function POST(request: Request) {
 
     await registrarUsoIA(
       tienda.id,
-      "foto-inventario",
+      "emparejar-fotos",
       true,
-      `${filas.length} filas`
+      `${archivos.length} fotos`
     );
 
-    if (filas.length === 0) {
-      return NextResponse.json(
-        { error: "La IA no encontró productos en la foto. Intenta con una más clara." },
-        { status: 422 }
-      );
-    }
-
-    return NextResponse.json({ filas });
+    return NextResponse.json({ matches });
   } catch (error) {
-    console.error("POST /api/ia/extraer-productos", error);
+    console.error("POST /api/ia/emparejar-fotos", error);
     const mensaje =
-      error instanceof Error ? error.message : "Error al procesar la foto";
+      error instanceof Error ? error.message : "Error al emparejar las fotos";
     return NextResponse.json({ error: mensaje }, { status: 500 });
   }
 }
