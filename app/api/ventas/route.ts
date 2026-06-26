@@ -172,7 +172,10 @@ export async function POST(request: Request) {
       });
 
       return venta;
-    });
+    },
+    // Ventas de mayoreo: muchos productos = muchas consultas. Subimos el límite
+    // de tiempo para que no truene (el default de Prisma es 5s).
+    { maxWait: 15000, timeout: 30000 });
 
     return NextResponse.json(venta, { status: 201 });
   } catch (error) {

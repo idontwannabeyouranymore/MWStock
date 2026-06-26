@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { canonizarMarca } from "@/lib/marca";
 
 export async function GET() {
   try {
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
       data: {
         nombre,
         descripcion,
-        marca,
+        marca: await canonizarMarca(tienda.id, marca),
         codigoBarras: codigoBarras || null,
         precio,
         tiendaId: tienda.id,

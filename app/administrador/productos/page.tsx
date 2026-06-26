@@ -482,10 +482,22 @@ export default function ProductosPage() {
                 value={marca}
                 onChange={(event) => setMarca(event.target.value)}
                 placeholder="Ej. Nike, 31 Hats, Adidas..."
+                list="marcas-lista"
                 className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
               />
+              <datalist id="marcas-lista">
+                {[
+                  ...new Set(
+                    productos
+                      .map((p) => p.marca)
+                      .filter((m): m is string => !!m && m.trim() !== "")
+                  ),
+                ].map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
               <p className="text-xs text-neutral-500">
-                Agrupa los productos por marca dentro de cada sección.
+                Elige una marca existente de la lista para no duplicarla.
               </p>
             </div>
 

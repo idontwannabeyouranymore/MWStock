@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { eliminarDeCloudinary } from "@/lib/cloudinary";
 import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { canonizarMarca } from "@/lib/marca";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -56,12 +57,17 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const body = await request.json();
 
+  const marcaCanon =
+    body.marca !== undefined
+      ? await canonizarMarca(tienda.id, body.marca)
+      : undefined;
+
   const producto = await prisma.producto.update({
     where: { id },
     data: {
       ...(body.nombre !== undefined && { nombre: body.nombre }),
       ...(body.descripcion !== undefined && { descripcion: body.descripcion }),
-      ...(body.marca !== undefined && { marca: body.marca }),
+      ...(marcaCanon !== undefined && { marca: marcaCanon }),
       ...(body.codigoBarras !== undefined && {
         codigoBarras: body.codigoBarras || null,
       }),

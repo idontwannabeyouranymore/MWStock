@@ -270,9 +270,17 @@ export default function POSPage() {
     window.open(url, "_blank");
   }
 
-  const productosFiltrados = productos.filter((p) =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  // Busca por nombre, marca o colección (el código de barras entra por Enter).
+  const q = busqueda.toLowerCase().trim();
+  const productosFiltrados = productos.filter((p) => {
+    if (q === "") return true;
+    const enNombre = p.nombre.toLowerCase().includes(q);
+    const enMarca = (p.marca || "").toLowerCase().includes(q);
+    const enColeccion = (p.colecciones || []).some((c) =>
+      c.coleccion.nombre.toLowerCase().includes(q)
+    );
+    return enNombre || enMarca || enColeccion;
+  });
 
   // Agrupa los productos del POS por sección y marca.
   const gruposPOS = (() => {
@@ -431,7 +439,7 @@ export default function POSPage() {
                     }
                   }
                 }}
-                placeholder="Buscar o escanear..."
+                placeholder="Buscar por nombre, marca o colección..."
                 className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
               />
               <button
