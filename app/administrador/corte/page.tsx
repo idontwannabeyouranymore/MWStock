@@ -26,6 +26,21 @@ type Abono = {
   createdAt: string;
   clienteNombre: string;
 };
+type CajaEstado = {
+  fondoCaja: number;
+  umbralCajaPeligro: number | null;
+  efectivoVentasHoy: number;
+  abonosHoy: number;
+  retirosHoy: number;
+  efectivoEnCaja: number;
+  peligro: boolean;
+  retiros: {
+    id: string;
+    monto: number;
+    nota: string | null;
+    createdAt: string;
+  }[];
+};
 
 function ymdLocal(d: Date) {
   const y = d.getFullYear();
@@ -55,8 +70,88 @@ export default function CortePage() {
   const [fecha, setFecha] = useState(ymdLocal(new Date()));
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
   const [clientesActivo, setClientesActivo] = useState(false);
+  const [caja, setCaja] = useState<CajaEstado | null>(null);
+  const [fondoInput, setFondoInput] = useState("");
+  const [umbralInput, setUmbralInput] = useState("");
+  const [montoRetiro, setMontoRetiro] = useState("");
+  const [notaRetiro, setNotaRetiro] = useState("");
+  const [guardandoCaja, setGuardandoCaja] = useState(false);
+
+  function cargarCaja() {
+    fetch("/api/caja")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && !d.error) {
+          setCaja(d);
+          setFondoInput(String(d.fondoCaja ?? ""));
+          setUmbralInput(
+            d.umbralCajaPeligro != null ? String(d.umbralCajaPeligro) : ""
+          );
+        }
+      })
+      .catch(() => {});
+  }
+
+  async function guardarConfig() {
+    setGuardandoCaja(true);
+    try {
+      const r = await fetch("/api/caja", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fondoCaja: Number(fondoInput) || 0,
+          umbralCajaPeligro:
+            umbralInput.trim() === "" ? null : Number(umbralInput),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "No se pudo guardar");
+      setCaja(d);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error");
+    } finally {
+      setGuardandoCaja(false);
+    }
+  }
+
+  async function hacerRetiro() {
+    const monto = Number(montoRetiro);
+    if (!monto || monto <= 0) {
+      alert("Escribe un monto válido.");
+      return;
+    }
+    if (
+      caja &&
+      monto > caja.efectivoEnCaja &&
+      !confirm(
+        `Vas a retirar $${monto.toFixed(2)} pero en caja hay $${caja.efectivoEnCaja.toFixed(
+          2
+        )}. ¿Continuar?`
+      )
+    ) {
+      return;
+    }
+    setGuardandoCaja(true);
+    try {
+      const r = await fetch("/api/caja/retiro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monto, nota: notaRetiro.trim() || null }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "No se pudo retirar");
+      setMontoRetiro("");
+      setNotaRetiro("");
+      cargarCaja();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error");
+    } finally {
+      setGuardandoCaja(false);
+    }
+  }
 
   useEffect(() => {
+    cargarCaja();
     fetch("/api/ventas")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setVentas(Array.isArray(d) ? d : []))
@@ -190,6 +285,137 @@ export default function CortePage() {
           <h2 className="text-lg font-semibold capitalize">{fechaBonita}</h2>
           <p className="text-sm text-neutral-500">{tiendaNombre}</p>
         </div>
+
+        {/* === Caja física (efectivo) === */}
+        {caja && (
+          <div className="space-y-4">
+            {caja.peligro && (
+              <div className="rounded-2xl border border-red-700 bg-red-950/40 p-4 text-sm text-red-200">
+                ⚠️{" "}
+                <span className="font-semibold">
+                  Hay mucho efectivo en caja
+                </span>{" "}
+                (${caja.efectivoEnCaja.toFixed(2)}, alerta a partir de $
+                {caja.umbralCajaPeligro?.toFixed(2)}). Por seguridad, retira
+                efectivo y guárdalo.
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+              <h3 className="font-semibold">Caja física (efectivo)</h3>
+              <div className="mt-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">Fondo de cambio</span>
+                  <span>${caja.fondoCaja.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">
+                    + Efectivo de ventas (hoy)
+                  </span>
+                  <span>${caja.efectivoVentasHoy.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">+ Abonos (hoy)</span>
+                  <span>${caja.abonosHoy.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">− Retiros (hoy)</span>
+                  <span>−${caja.retirosHoy.toFixed(2)}</span>
+                </div>
+                <div className="mt-2 flex justify-between border-t border-neutral-800 pt-2 text-base">
+                  <span className="font-semibold">Efectivo en caja ahora</span>
+                  <span
+                    className={`font-bold ${
+                      caja.peligro ? "text-red-400" : "text-green-400"
+                    }`}
+                  >
+                    ${caja.efectivoEnCaja.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Configuración: fondo + umbral */}
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 print:hidden">
+                <label className="text-sm">
+                  <span className="text-neutral-400">Fondo de cambio</span>
+                  <input
+                    type="number"
+                    value={fondoInput}
+                    onChange={(e) => setFondoInput(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 outline-none focus:border-white"
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className="text-neutral-400">
+                    Alertar si pasa de (vacío = sin alerta)
+                  </span>
+                  <input
+                    type="number"
+                    value={umbralInput}
+                    onChange={(e) => setUmbralInput(e.target.value)}
+                    placeholder="Ej. 3000"
+                    className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 outline-none focus:border-white"
+                  />
+                </label>
+              </div>
+              <button
+                onClick={guardarConfig}
+                disabled={guardandoCaja}
+                className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50 print:hidden"
+              >
+                Guardar configuración
+              </button>
+
+              {/* Retiro de efectivo (solo admin) */}
+              <div className="mt-6 border-t border-neutral-800 pt-4 print:hidden">
+                <h4 className="text-sm font-semibold">Retirar efectivo</h4>
+                <p className="text-xs text-neutral-500">
+                  Solo tú (administrador) puedes sacar dinero de la caja.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <input
+                    type="number"
+                    value={montoRetiro}
+                    onChange={(e) => setMontoRetiro(e.target.value)}
+                    placeholder="Monto"
+                    className="w-32 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 outline-none focus:border-white"
+                  />
+                  <input
+                    value={notaRetiro}
+                    onChange={(e) => setNotaRetiro(e.target.value)}
+                    placeholder="Nota (opcional)"
+                    className="min-w-[140px] flex-1 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 outline-none focus:border-white"
+                  />
+                  <button
+                    onClick={hacerRetiro}
+                    disabled={guardandoCaja}
+                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500 disabled:opacity-50"
+                  >
+                    Retirar
+                  </button>
+                </div>
+                {caja.retiros.length > 0 && (
+                  <div className="mt-3 space-y-1 text-sm">
+                    {caja.retiros.map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex justify-between border-b border-neutral-800 pb-1"
+                      >
+                        <span className="text-neutral-400">
+                          {hora(r.createdAt)}
+                          {r.nota ? ` · ${r.nota}` : ""}
+                        </span>
+                        <span className="font-semibold text-red-400">
+                          −${r.monto.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {cargando ? (
           <p className="text-neutral-400">Cargando...</p>

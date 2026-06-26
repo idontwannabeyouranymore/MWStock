@@ -91,6 +91,12 @@ export default function POSPage() {
   const [sets, setSets] = useState<SetVenta[]>([]);
   const [tiendaNombre, setTiendaNombre] = useState("MWStock");
   const [clientesActivo, setClientesActivo] = useState(false);
+  const [caja, setCaja] = useState<{
+    efectivoEnCaja: number;
+    peligro: boolean;
+    umbralCajaPeligro: number | null;
+    fondoCaja: number;
+  } | null>(null);
 
   const [busqueda, setBusqueda] = useState("");
   const [escaneandoPOS, setEscaneandoPOS] = useState(false);
@@ -140,6 +146,12 @@ export default function POSPage() {
       .then((d) => {
         if (d?.nombre) setTiendaNombre(d.nombre);
         setClientesActivo(normalizarModulos(d?.modulos).clientes);
+      })
+      .catch(() => {});
+    fetch("/api/caja")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && !d.error) setCaja(d);
       })
       .catch(() => {});
   }, [cargarProductos, cargarSets, cargarClientes]);
@@ -323,6 +335,12 @@ export default function POSPage() {
       await cargarProductos();
       await cargarSets();
       await cargarClientes();
+      fetch("/api/caja")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d && !d.error) setCaja(d);
+        })
+        .catch(() => {});
     } catch (error) {
       console.error(error);
       alert(error instanceof Error ? error.message : "Error al cobrar");
@@ -486,6 +504,35 @@ export default function POSPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           {/* Productos y sets */}
           <div className="space-y-4">
+            {caja && (
+              <div
+                className={`rounded-xl border p-3 text-sm ${
+                  caja.peligro
+                    ? "border-red-700 bg-red-950/40 text-red-200"
+                    : "border-neutral-800 bg-neutral-900 text-neutral-300"
+                }`}
+              >
+                {caja.peligro ? (
+                  <>
+                    ⚠️{" "}
+                    <span className="font-semibold">
+                      Hay mucho efectivo en caja
+                    </span>{" "}
+                    (${caja.efectivoEnCaja.toFixed(2)}). Pídele al administrador
+                    que haga un retiro.
+                  </>
+                ) : (
+                  <>
+                    💵 Efectivo en caja:{" "}
+                    <span className="font-semibold">
+                      ${caja.efectivoEnCaja.toFixed(2)}
+                    </span>{" "}
+                    · Cambio inicial: ${caja.fondoCaja.toFixed(2)}
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <input
                 value={busqueda}

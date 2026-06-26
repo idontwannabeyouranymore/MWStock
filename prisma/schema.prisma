@@ -72,6 +72,10 @@ model Tienda {
   activa      Boolean  @default(true)
   modulos     Json?
 
+  // Caja: fondo de cambio del vendedor y umbral de efectivo "peligroso".
+  fondoCaja         Decimal  @default(0) @db.Decimal(10, 2)
+  umbralCajaPeligro Decimal? @db.Decimal(10, 2)
+
   usuarioId   String   @unique
   usuario     Usuario  @relation("Propietario", fields: [usuarioId], references: [id])
   personal    Usuario[] @relation("Personal")
@@ -83,6 +87,7 @@ model Tienda {
   deudas      Deuda[]
   tandas      Tanda[]
   usoIA       UsoIA[]
+  retiros     RetiroCaja[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -442,6 +447,21 @@ model UsoIA {
   funcion   String
   exito     Boolean  @default(true)
   detalle   String?
+
+  tiendaId  String
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tiendaId])
+  @@index([createdAt])
+}
+
+// Retiro de efectivo de la caja. Solo el administrador puede registrarlos.
+model RetiroCaja {
+  id        String   @id @default(cuid())
+  monto     Decimal  @db.Decimal(10, 2)
+  nota      String?
 
   tiendaId  String
   tienda    Tienda   @relation(fields: [tiendaId], references: [id])
