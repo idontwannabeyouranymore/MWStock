@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { normalizarModulos } from "@/lib/modulos";
+import EscanerCodigo from "@/components/EscanerCodigo";
 
 type Coleccion = {
   id: string;
@@ -30,6 +31,7 @@ type Producto = {
   nombre: string;
   marca: string | null;
   descripcion: string | null;
+  codigoBarras: string | null;
   precio: string;
   estado: string;
   destacado: boolean;
@@ -45,6 +47,8 @@ export default function ProductosPage() {
 
   const [nombre, setNombre] = useState("");
   const [marca, setMarca] = useState("");
+  const [codigoBarras, setCodigoBarras] = useState("");
+  const [escaneando, setEscaneando] = useState(false);
   const [descripcion, setDescripcion] = useState("");
   const [precio, setPrecio] = useState("");
   const [coleccionId, setColeccionId] = useState("");
@@ -214,6 +218,7 @@ export default function ProductosPage() {
           body: JSON.stringify({
             nombre,
             marca: marca.trim() || null,
+            codigoBarras: codigoBarras.trim() || null,
             descripcion: descripcion.trim() || null,
             precio: Number(precio),
           }),
@@ -226,6 +231,7 @@ export default function ProductosPage() {
           body: JSON.stringify({
             nombre,
             marca: marca.trim() || null,
+            codigoBarras: codigoBarras.trim() || null,
             descripcion: descripcion.trim() || null,
             precio: Number(precio),
             coleccionIds: coleccionId ? [coleccionId] : [],
@@ -252,6 +258,7 @@ export default function ProductosPage() {
   function limpiarFormulario() {
     setNombre("");
     setMarca("");
+    setCodigoBarras("");
     setDescripcion("");
     setPostGenerado("");
     setPrecio("");
@@ -274,6 +281,7 @@ export default function ProductosPage() {
     setEditandoId(producto.id);
     setNombre(producto.nombre);
     setMarca(producto.marca ?? "");
+    setCodigoBarras(producto.codigoBarras ?? "");
     setDescripcion(producto.descripcion ?? "");
     setPostGenerado("");
     setPrecio(String(producto.precio));
@@ -483,6 +491,28 @@ export default function ProductosPage() {
               <p className="text-xs text-neutral-500">
                 Agrupa los productos por marca dentro de cada sección.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-neutral-300">
+                Código de barras{" "}
+                <span className="text-neutral-500">(opcional)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={codigoBarras}
+                  onChange={(event) => setCodigoBarras(event.target.value)}
+                  placeholder="Escanéalo o escríbelo"
+                  className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setEscaneando(true)}
+                  className="flex-shrink-0 rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold hover:bg-neutral-700"
+                >
+                  📷 Escanear
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -880,6 +910,16 @@ export default function ProductosPage() {
           )}
         </section>
       </section>
+
+      {escaneando && (
+        <EscanerCodigo
+          onDetectado={(codigo) => {
+            setCodigoBarras(codigo);
+            setEscaneando(false);
+          }}
+          onCerrar={() => setEscaneando(false)}
+        />
+      )}
     </main>
   );
 }

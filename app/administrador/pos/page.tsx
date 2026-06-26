@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { normalizarModulos } from "@/lib/modulos";
+import EscanerCodigo from "@/components/EscanerCodigo";
 
 type Variante = {
   id: string;
@@ -16,6 +17,7 @@ type Producto = {
   id: string;
   nombre: string;
   marca?: string | null;
+  codigoBarras?: string | null;
   precio: string;
   estado: string;
   esSet?: boolean;
@@ -91,6 +93,7 @@ export default function POSPage() {
   const [clientesActivo, setClientesActivo] = useState(false);
 
   const [busqueda, setBusqueda] = useState("");
+  const [escaneandoPOS, setEscaneandoPOS] = useState(false);
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
 
   const [metodoPago, setMetodoPago] = useState("EFECTIVO");
@@ -183,6 +186,33 @@ export default function POSPage() {
         },
       ];
     });
+  }
+
+  // Busca un producto por su código de barras y lo agrega al carrito.
+  // Sirve tanto para la cámara como para un lector físico (teclado).
+  function agregarPorCodigo(codigo: string) {
+    const limpio = codigo.trim();
+    if (!limpio) return;
+    const producto = productos.find(
+      (p) => (p.codigoBarras || "").trim() === limpio
+    );
+    if (!producto) {
+      alert(`Código no encontrado: ${limpio}`);
+      return;
+    }
+    const variante =
+      producto.variantes.find((v) => v.estado !== "ARCHIVADA" && v.stock > 0) ||
+      producto.variantes[0];
+    if (!variante) {
+      alert(`"${producto.nombre}" no tiene presentaciones.`);
+      return;
+    }
+    if (variante.stock <= 0) {
+      alert(`"${producto.nombre}" está agotado.`);
+      return;
+    }
+    agregarAlCarrito(producto, variante);
+    setBusqueda("");
   }
 
   function agregarSetAlCarrito(set: SetVenta) {
@@ -456,12 +486,43 @@ export default function POSPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           {/* Productos y sets */}
           <div className="space-y-4">
-            <input
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
-            />
+            <div className="flex gap-2">
+              <input
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const coincide = productos.find(
+                      (p) => (p.codigoBarras || "").trim() === busqueda.trim()
+                    );
+                    if (coincide) {
+                      e.preventDefault();
+                      agregarPorCodigo(busqueda);
+                    }
+                  }
+                }}
+                placeholder="Buscar o escanear..."
+                className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+              />
+              <button
+                type="button"
+                onClick={() => setEscaneandoPOS(true)}
+                title="Escanear código de barras"
+                className="flex-shrink-0 rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold hover:bg-neutral-700"
+              >
+                📷
+              </button>
+            </div>
+
+            {escaneandoPOS && (
+              <EscanerCodigo
+                onDetectado={(codigo) => {
+                  setEscaneandoPOS(false);
+                  agregarPorCodigo(codigo);
+                }}
+                onCerrar={() => setEscaneandoPOS(false)}
+              />
+            )}
 
             {setsFiltrados.length > 0 && (
               <div className="space-y-3">

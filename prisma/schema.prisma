@@ -112,6 +112,7 @@ model Producto {
   nombre       String
   descripcion  String?
   marca        String?
+  codigoBarras String?
   precio       Decimal        @db.Decimal(10, 2)
   estado       EstadoProducto @default(ACTIVO)
   destacado    Boolean        @default(false)
@@ -132,6 +133,7 @@ model Producto {
 
   @@index([tiendaId])
   @@index([estado])
+  @@index([codigoBarras])
 }
 
 model ProductoImagen {

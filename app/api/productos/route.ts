@@ -47,7 +47,8 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { nombre, descripcion, marca, precio, coleccionIds } = body;
+    const { nombre, descripcion, marca, codigoBarras, precio, coleccionIds } =
+      body;
 
     if (!nombre || !precio) {
       return NextResponse.json(
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
         nombre,
         descripcion,
         marca,
+        codigoBarras: codigoBarras || null,
         precio,
         tiendaId: tienda.id,
         colecciones: {

@@ -62,6 +62,9 @@ export async function PATCH(request: Request, context: RouteContext) {
       ...(body.nombre !== undefined && { nombre: body.nombre }),
       ...(body.descripcion !== undefined && { descripcion: body.descripcion }),
       ...(body.marca !== undefined && { marca: body.marca }),
+      ...(body.codigoBarras !== undefined && {
+        codigoBarras: body.codigoBarras || null,
+      }),
       ...(body.precio !== undefined && { precio: Number(body.precio) }),
       ...(body.estado !== undefined && { estado: body.estado }),
       ...(body.destacado !== undefined && { destacado: body.destacado }),
