@@ -9,8 +9,16 @@ type Vendedor = {
   createdAt: string;
 };
 
+type EstadVendedor = {
+  vendedor: string;
+  hoy: { monto: number; ventas: number };
+  mes: { monto: number; ventas: number };
+  total: { monto: number; ventas: number };
+};
+
 export default function VendedoresPage() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+  const [stats, setStats] = useState<EstadVendedor[]>([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
 
@@ -22,9 +30,14 @@ export default function VendedoresPage() {
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    const r = await fetch("/api/vendedores");
+    const [r, rs] = await Promise.all([
+      fetch("/api/vendedores"),
+      fetch("/api/vendedores/estadisticas"),
+    ]);
     const data = r.ok ? await r.json() : [];
     setVendedores(Array.isArray(data) ? data : []);
+    const ds = rs.ok ? await rs.json() : [];
+    setStats(Array.isArray(ds) ? ds : []);
     setCargando(false);
   }, []);
 
@@ -158,6 +171,56 @@ export default function VendedoresPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {stats.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-xl font-semibold">Ventas por vendedor</h2>
+            <div className="overflow-hidden rounded-2xl border border-neutral-800">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-neutral-900 text-neutral-400">
+                  <tr>
+                    <th className="px-4 py-3">Vendedor</th>
+                    <th className="px-4 py-3 text-right">Hoy</th>
+                    <th className="px-4 py-3 text-right">Este mes</th>
+                    <th className="px-4 py-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.map((s, i) => (
+                    <tr
+                      key={`${s.vendedor}-${i}`}
+                      className="border-t border-neutral-800 bg-neutral-950"
+                    >
+                      <td className="px-4 py-3 font-semibold">{s.vendedor}</td>
+                      <td className="px-4 py-3 text-right">
+                        ${s.hoy.monto.toFixed(2)}
+                        <span className="block text-xs text-neutral-500">
+                          {s.hoy.ventas} venta(s)
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        ${s.mes.monto.toFixed(2)}
+                        <span className="block text-xs text-neutral-500">
+                          {s.mes.ventas} venta(s)
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        ${s.total.monto.toFixed(2)}
+                        <span className="block text-xs text-neutral-500">
+                          {s.total.ventas} venta(s)
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-neutral-500">
+              Las ventas hechas antes de esta actualización pueden aparecer como
+              &quot;Sin asignar&quot;.
+            </p>
           </div>
         )}
       </section>

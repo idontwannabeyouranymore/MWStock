@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { obtenerTiendaDeSesion, obtenerUsuarioId } from "@/lib/auth";
 
 type ItemEntrada = {
   varianteId?: string;
@@ -52,6 +52,15 @@ export async function POST(request: Request) {
     if (!tienda) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+
+    // Quién está haciendo la venta (admin o vendedor).
+    const usuarioId = await obtenerUsuarioId();
+    const vendedor = usuarioId
+      ? await prisma.usuario.findUnique({
+          where: { id: usuarioId },
+          select: { id: true, nombre: true },
+        })
+      : null;
 
     const body = await request.json();
     const items: ItemEntrada[] = Array.isArray(body.items) ? body.items : [];
@@ -165,6 +174,8 @@ export async function POST(request: Request) {
               : null,
           clienteNombre,
           clienteTelefono,
+          vendedorId: vendedor?.id ?? null,
+          vendedorNombre: vendedor?.nombre ?? null,
           tiendaId: tienda.id,
           items: { create: itemsCrear },
         },

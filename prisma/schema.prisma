@@ -220,6 +220,11 @@ model Venta {
   clienteNombre   String?
   clienteTelefono String?
 
+  // Quién hizo la venta (admin o vendedor). Guardamos el nombre como snapshot
+  // para que el reporte siga correcto aunque se borre la cuenta del vendedor.
+  vendedorId      String?
+  vendedorNombre  String?
+
   tiendaId        String
   tienda          Tienda     @relation(fields: [tiendaId], references: [id])
 
@@ -228,6 +233,7 @@ model Venta {
   createdAt       DateTime   @default(now())
 
   @@index([tiendaId])
+  @@index([vendedorId])
   @@index([createdAt])
 }
 

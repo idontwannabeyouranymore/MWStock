@@ -24,6 +24,7 @@ const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
   { href: "/administrador/qr", label: "Código QR", mod: null },
   { href: "/administrador/vendedores", label: "Vendedores", mod: null },
   { href: "/administrador/configuracion", label: "Configuración", mod: null },
+  { href: "/administrador/manual", label: "Manual del vendedor", mod: null },
   { href: "/administrador/cuenta", label: "Mi cuenta", mod: null },
 ];
 
@@ -52,6 +53,7 @@ export default function AdminSidebar({ rol }: { rol?: string | null }) {
       ? links.filter(
           (l) =>
             l.href === "/administrador/pos" ||
+            l.href === "/administrador/manual" ||
             l.href === "/administrador/cuenta"
         )
       : links.filter(
