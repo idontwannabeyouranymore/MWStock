@@ -174,9 +174,7 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
                             : "text-sm font-semibold text-neutral-500"
                         }
                       >
-                        {variante.stock > 0
-                          ? `${variante.stock} disponible(s)`
-                          : "Agotado"}
+                        {variante.stock > 0 ? "Disponible" : "Agotado"}
                       </span>
                     </div>
                   ))}

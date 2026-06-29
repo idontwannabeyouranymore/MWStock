@@ -303,10 +303,7 @@ export default async function ColeccionPublicaPage({
                                       : "#737373",
                                 }}
                               >
-                                {variante.talla}{" "}
-                                {variante.stock > 0
-                                  ? `(${variante.stock})`
-                                  : "(0)"}
+                                {variante.talla}
                               </span>
                             ))}
                           </div>
