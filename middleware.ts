@@ -49,6 +49,7 @@ export async function middleware(request: NextRequest) {
     payload.rol === "VENDEDOR" &&
     pathname.startsWith("/administrador") &&
     !pathname.startsWith("/administrador/pos") &&
+    !pathname.startsWith("/administrador/catalogo") &&
     !pathname.startsWith("/administrador/manual") &&
     !pathname.startsWith("/administrador/cuenta")
   ) {

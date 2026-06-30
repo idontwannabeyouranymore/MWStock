@@ -14,6 +14,7 @@ const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
   { href: "/administrador", label: "Dashboard", mod: null },
   { href: "/administrador/asistente", label: "Asistente IA", mod: "iaAnalista" },
   { href: "/administrador/pos", label: "Punto de venta", mod: "pos" },
+  { href: "/administrador/catalogo", label: "Catálogo e inventario", mod: null },
   { href: "/administrador/colecciones", label: "Colecciones", mod: "colecciones" },
   { href: "/administrador/productos", label: "Productos", mod: null },
   { href: "/administrador/importar", label: "Importar", mod: "importar" },
@@ -53,6 +54,7 @@ export default function AdminSidebar({ rol }: { rol?: string | null }) {
       ? links.filter(
           (l) =>
             l.href === "/administrador/pos" ||
+            l.href === "/administrador/catalogo" ||
             l.href === "/administrador/manual" ||
             l.href === "/administrador/cuenta"
         )

@@ -14,7 +14,7 @@ const SECCIONES: { titulo: string; pasos: Paso[] }[] = [
       {
         titulo: "¿Qué puedes ver?",
         texto:
-          "Como vendedor solo ves el Punto de venta y tu cuenta. No tienes acceso a inventario, precios de costo ni estadísticas de la tienda.",
+          "Ves el Punto de venta, el Catálogo (para consultar productos y cuántas piezas hay) y tu cuenta. No puedes editar inventario ni ver precios de costo ni las estadísticas de la tienda.",
       },
     ],
   },
