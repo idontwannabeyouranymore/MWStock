@@ -26,8 +26,9 @@ export async function POST(request: Request) {
       await tx.ventaItem.deleteMany({ where: { venta: { tiendaId } } });
       await tx.venta.deleteMany({ where: { tiendaId } });
 
-      // Caja
+      // Caja y promociones
       await tx.retiroCaja.deleteMany({ where: { tiendaId } });
+      await tx.promocion.deleteMany({ where: { tiendaId } });
 
       // Inventario / catálogo
       await tx.movimientoInventario.deleteMany({

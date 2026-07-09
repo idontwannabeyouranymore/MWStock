@@ -4,6 +4,7 @@ import { configEstilo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import BuscadorCatalogo from "@/components/BuscadorCatalogo";
 import { normalizarModulos } from "@/lib/modulos";
+import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
 
 type PageProps = {
   params: Promise<{
@@ -54,6 +55,18 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
   const colorTema = tienda.colorTema || "#ffffff";
   const estilo = configEstilo(tienda.estiloCatalogo);
 
+  // Promociones vigentes de la tienda.
+  const ahora = new Date();
+  const promos = await prisma.promocion.findMany({
+    where: {
+      tiendaId: tienda.id,
+      activa: true,
+      inicio: { lte: ahora },
+      fin: { gte: ahora },
+    },
+    select: { porcentaje: true, alcance: true, coleccionId: true, marca: true },
+  });
+
   // Todos los productos de la tienda, para el buscador.
   const productosTienda = await prisma.producto.findMany({
     where: { tiendaId: tienda.id, estado: { not: "ARCHIVADO" } },
@@ -76,15 +89,21 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
     const precioMax =
       precios.length === 0 ? Number(p.precio) : Math.max(...precios);
 
+    const coleccionIds = p.colecciones.map((c) => c.coleccionId);
+    const pct = descuentoProducto(promos, { marca: p.marca, coleccionIds });
+
     return {
       id: p.id,
       nombre: p.nombre,
       imagen: p.imagenes[0]?.url ?? null,
       soldOut,
-      precioMin,
-      precioMax,
+      // Si hay promo vigente, el buscador muestra ya el precio rebajado.
+      precioMin: aplicarDescuento(precioMin, pct),
+      precioMax: aplicarDescuento(precioMax, pct),
+      precioOriginalMin: precioMin,
+      descuento: pct,
       marca: p.marca ?? "",
-      coleccionIds: p.colecciones.map((c) => c.coleccionId),
+      coleccionIds,
     };
   });
 

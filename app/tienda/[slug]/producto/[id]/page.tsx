@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import GaleriaProducto from "@/components/GaleriaProducto";
+import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
 
 type PageProps = {
   params: Promise<{
@@ -64,6 +65,23 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
 
   const colorTema = tienda.colorTema || "#ffffff";
   const estilo = configEstilo(tienda.estiloCatalogo);
+
+  // Promociones vigentes de la tienda y descuento aplicable a este producto.
+  const ahora = new Date();
+  const promos = await prisma.promocion.findMany({
+    where: {
+      tiendaId: tienda.id,
+      activa: true,
+      inicio: { lte: ahora },
+      fin: { gte: ahora },
+    },
+    select: { porcentaje: true, alcance: true, coleccionId: true, marca: true },
+  });
+  const coleccionIds = producto.colecciones.map((pc) => pc.coleccionId);
+  const pct = descuentoProducto(promos, {
+    marca: producto.marca,
+    coleccionIds,
+  });
 
   const stockTotal = producto.variantes.reduce(
     (total, variante) => total + variante.stock,
@@ -127,11 +145,29 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
               )}
             </div>
 
-            <p className="text-3xl font-bold" style={{ color: colorTema }}>
-              {precioMin === precioMax
-                ? `$${precioMin.toFixed(2)}`
-                : `desde $${precioMin.toFixed(2)}`}
-            </p>
+            {pct > 0 ? (
+              <p className="flex flex-wrap items-center gap-3 text-3xl font-bold">
+                <span className="text-xl font-semibold text-neutral-400 line-through opacity-60">
+                  {precioMin === precioMax
+                    ? `$${precioMin.toFixed(2)}`
+                    : `desde $${precioMin.toFixed(2)}`}
+                </span>
+                <span style={{ color: colorTema }}>
+                  {precioMin === precioMax
+                    ? `$${aplicarDescuento(precioMin, pct).toFixed(2)}`
+                    : `desde $${aplicarDescuento(precioMin, pct).toFixed(2)}`}
+                </span>
+                <span className="rounded-full bg-green-600 px-2 py-0.5 text-sm font-bold text-white">
+                  -{pct}%
+                </span>
+              </p>
+            ) : (
+              <p className="text-3xl font-bold" style={{ color: colorTema }}>
+                {precioMin === precioMax
+                  ? `$${precioMin.toFixed(2)}`
+                  : `desde $${precioMin.toFixed(2)}`}
+              </p>
+            )}
 
             {producto.descripcion && (
               <p className="leading-relaxed text-neutral-300">
@@ -156,15 +192,28 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
                     >
                       <div>
                         <p className="font-semibold">{variante.talla}</p>
-                        <p
-                          className="text-sm font-semibold"
-                          style={{ color: colorTema }}
-                        >
-                          $
-                          {Number(
+                        {(() => {
+                          const base = Number(
                             variante.precio ?? producto.precio
-                          ).toFixed(2)}
-                        </p>
+                          );
+                          return pct > 0 ? (
+                            <p className="flex items-center gap-2 text-sm font-semibold">
+                              <span className="text-neutral-400 line-through opacity-60">
+                                ${base.toFixed(2)}
+                              </span>
+                              <span style={{ color: colorTema }}>
+                                ${aplicarDescuento(base, pct).toFixed(2)}
+                              </span>
+                            </p>
+                          ) : (
+                            <p
+                              className="text-sm font-semibold"
+                              style={{ color: colorTema }}
+                            >
+                              ${base.toFixed(2)}
+                            </p>
+                          );
+                        })()}
                       </div>
 
                       <span

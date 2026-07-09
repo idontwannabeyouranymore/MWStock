@@ -7,6 +7,7 @@ export type ClaveModulo =
   | "pos"
   | "ventas"
   | "corte"
+  | "promociones"
   | "marcas"
   | "iaInventario"
   | "iaFondoBlanco"
@@ -57,6 +58,13 @@ export const MODULOS: {
     clave: "corte",
     etiqueta: "Corte de caja",
     descripcion: "Cierre del día por método de pago.",
+    porDefecto: true,
+  },
+  {
+    clave: "promociones",
+    etiqueta: "Promociones",
+    descripcion:
+      "Descuentos por colección, marca o toda la tienda, con fechas.",
     porDefecto: true,
   },
   {

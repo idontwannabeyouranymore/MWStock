@@ -1,0 +1,186 @@
+classDiagram
+    direction LR
+
+    class Usuario {
+        +String id
+        +String nombre
+        +String email
+        +String password
+        +RolUsuario rol
+        +String tiendaTrabajoId
+        +DateTime createdAt
+        +DateTime updatedAt
+    }
+
+    class Tienda {
+        +String id
+        +String nombre
+        +String slug
+        +Boolean activa
+        +Json modulos
+        +Decimal fondoCaja
+        +Decimal umbralCajaPeligro
+        +String logoUrl
+        +String whatsapp
+        +String instagram
+        +String usuarioId
+    }
+
+    class Coleccion {
+        +String id
+        +String nombre
+        +String descripcion
+        +EstadoColeccion estado
+        +Int orden
+        +String tiendaId
+    }
+
+    class Producto {
+        +String id
+        +String nombre
+        +String marca
+        +String codigoBarras
+        +Decimal precio
+        +EstadoProducto estado
+        +Boolean destacado
+        +DateTime fechaIngreso
+        +String tiendaId
+    }
+
+    class ProductoImagen {
+        +String id
+        +String url
+        +Int orden
+        +String productoId
+    }
+
+    class Variante {
+        +String id
+        +String talla
+        +String color
+        +Int stock
+        +String sku
+        +Decimal precio
+        +EstadoVariante estado
+        +String productoId
+    }
+
+    class ProductoColeccion {
+        +String id
+        +String productoId
+        +String coleccionId
+    }
+
+    class MovimientoInventario {
+        +String id
+        +TipoMovimientoInventario tipo
+        +Int cantidad
+        +Int stockAnterior
+        +Int stockNuevo
+        +String nota
+        +String varianteId
+    }
+
+    class Venta {
+        +String id
+        +Decimal total
+        +MetodoPago metodoPago
+        +Decimal montoRecibido
+        +Decimal cambio
+        +String referencia
+        +String clienteNombre
+        +String clienteTelefono
+        +String vendedorId
+        +String vendedorNombre
+        +String tiendaId
+        +DateTime createdAt
+    }
+
+    class VentaItem {
+        +String id
+        +String productoNombre
+        +String talla
+        +Int cantidad
+        +Decimal precioUnitario
+        +Decimal subtotal
+        +String ventaId
+        +String varianteId
+    }
+
+    class UsoIA {
+        +String id
+        +String funcion
+        +Boolean exito
+        +String detalle
+        +String tiendaId
+    }
+
+    class RetiroCaja {
+        +String id
+        +Decimal monto
+        +String nota
+        +String tiendaId
+    }
+
+    class RolUsuario {
+        <<enumeration>>
+        ADMIN
+        DUENO
+        VENDEDOR
+    }
+    class EstadoColeccion {
+        <<enumeration>>
+        ACTIVA
+        OCULTA
+        ARCHIVADA
+    }
+    class EstadoProducto {
+        <<enumeration>>
+        ACTIVO
+        AGOTADO
+        ARCHIVADO
+    }
+    class EstadoVariante {
+        <<enumeration>>
+        ACTIVA
+        AGOTADA
+        ARCHIVADA
+    }
+    class TipoMovimientoInventario {
+        <<enumeration>>
+        ENTRADA
+        SALIDA
+        AJUSTE
+        VENTA
+        APARTADO
+        DANADO
+    }
+    class MetodoPago {
+        <<enumeration>>
+        EFECTIVO
+        TARJETA
+        TRANSFERENCIA
+    }
+
+    Usuario "1" --> "0..1" Tienda : es dueño
+    Tienda "1" --> "0..*" Usuario : emplea
+    Tienda "1" --> "0..*" Coleccion : tiene
+    Tienda "1" --> "0..*" Producto : tiene
+    Tienda "1" --> "0..*" Venta : registra
+    Tienda "1" --> "0..*" UsoIA : registra
+    Tienda "1" --> "0..*" RetiroCaja : registra
+    Producto "1" --> "0..*" ProductoImagen : tiene
+    Producto "1" --> "0..*" Variante : tiene
+    Producto "1" --> "0..*" ProductoColeccion
+    Coleccion "1" --> "0..*" ProductoColeccion
+    Variante "1" --> "0..*" MovimientoInventario : genera
+    Variante "1" --> "0..*" VentaItem
+    Venta "1" *-- "1..*" VentaItem : contiene
+    Venta ..> Usuario : vendedor
+
+    Usuario ..> RolUsuario
+    Coleccion ..> EstadoColeccion
+    Producto ..> EstadoProducto
+    Variante ..> EstadoVariante
+    MovimientoInventario ..> TipoMovimientoInventario
+    Venta ..> MetodoPago

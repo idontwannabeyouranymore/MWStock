@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import { normalizarModulos } from "@/lib/modulos";
+import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
 
 type PageProps = {
   params: Promise<{
@@ -60,6 +61,7 @@ export default async function ColeccionPublicaPage({
                 where: { estado: { not: "ARCHIVADA" } },
                 orderBy: { createdAt: "asc" },
               },
+              colecciones: { select: { coleccionId: true } },
             },
           },
         },
@@ -85,6 +87,18 @@ export default async function ColeccionPublicaPage({
 
   const colorTema = tienda.colorTema || "#ffffff";
   const estilo = configEstilo(tienda.estiloCatalogo);
+
+  // Promociones vigentes de la tienda.
+  const ahora = new Date();
+  const promos = await prisma.promocion.findMany({
+    where: {
+      tiendaId: tienda.id,
+      activa: true,
+      inicio: { lte: ahora },
+      fin: { gte: ahora },
+    },
+    select: { porcentaje: true, alcance: true, coleccionId: true, marca: true },
+  });
 
   const productos = coleccion.productos
     .map(({ producto }) => producto)
@@ -218,6 +232,14 @@ export default async function ColeccionPublicaPage({
                   ? Number(producto.precio)
                   : Math.max(...precios);
 
+              const coleccionIds = producto.colecciones.map(
+                (pc) => pc.coleccionId
+              );
+              const pct = descuentoProducto(promos, {
+                marca: producto.marca,
+                coleccionIds,
+              });
+
               return (
                 <article
                   key={producto.id}
@@ -269,14 +291,32 @@ export default async function ColeccionPublicaPage({
                         {producto.nombre}
                       </h3>
 
-                      <p
-                        className="text-xl font-bold"
-                        style={{ color: colorTema }}
-                      >
-                        {precioMin === precioMax
-                          ? `$${precioMin.toFixed(2)}`
-                          : `desde $${precioMin.toFixed(2)}`}
-                      </p>
+                      {pct > 0 ? (
+                        <p className="flex flex-wrap items-center gap-2 text-xl font-bold">
+                          <span className="text-sm font-semibold text-neutral-400 line-through opacity-60">
+                            {precioMin === precioMax
+                              ? `$${precioMin.toFixed(2)}`
+                              : `desde $${precioMin.toFixed(2)}`}
+                          </span>
+                          <span style={{ color: colorTema }}>
+                            {precioMin === precioMax
+                              ? `$${aplicarDescuento(precioMin, pct).toFixed(2)}`
+                              : `desde $${aplicarDescuento(precioMin, pct).toFixed(2)}`}
+                          </span>
+                          <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                            -{pct}%
+                          </span>
+                        </p>
+                      ) : (
+                        <p
+                          className="text-xl font-bold"
+                          style={{ color: colorTema }}
+                        >
+                          {precioMin === precioMax
+                            ? `$${precioMin.toFixed(2)}`
+                            : `desde $${precioMin.toFixed(2)}`}
+                        </p>
+                      )}
 
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-neutral-300">

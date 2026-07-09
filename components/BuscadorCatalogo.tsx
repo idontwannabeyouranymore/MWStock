@@ -11,6 +11,8 @@ type ProductoBusqueda = {
   soldOut: boolean;
   precioMin: number;
   precioMax: number;
+  precioOriginalMin: number;
+  descuento: number;
   marca: string;
   coleccionIds: string[];
 };
@@ -259,10 +261,22 @@ export default function BuscadorCatalogo({
                     </div>
                     <div className="space-y-1 p-4">
                       <h3 className="font-semibold">{p.nombre}</h3>
-                      <p className="font-bold" style={{ color: colorTema }}>
-                        {p.precioMin === p.precioMax
-                          ? `$${p.precioMin.toFixed(2)}`
-                          : `desde $${p.precioMin.toFixed(2)}`}
+                      <p className="flex flex-wrap items-center gap-2 font-bold">
+                        {p.descuento > 0 && (
+                          <span className="text-sm font-semibold text-neutral-500 line-through opacity-60">
+                            ${p.precioOriginalMin.toFixed(2)}
+                          </span>
+                        )}
+                        <span style={{ color: colorTema }}>
+                          {p.precioMin === p.precioMax
+                            ? `$${p.precioMin.toFixed(2)}`
+                            : `desde $${p.precioMin.toFixed(2)}`}
+                        </span>
+                        {p.descuento > 0 && (
+                          <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                            -{p.descuento}%
+                          </span>
+                        )}
                       </p>
                     </div>
                   </Link>

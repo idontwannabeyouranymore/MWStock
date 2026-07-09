@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import EscanerCodigo from "@/components/EscanerCodigo";
+import {
+  descuentoProducto,
+  aplicarDescuento,
+  promoVigente,
+  type PromoActiva,
+} from "@/lib/promos";
 
 type Variante = {
   id: string;
@@ -21,7 +27,7 @@ type Producto = {
   estado: string;
   imagenes: { url: string }[];
   variantes: Variante[];
-  colecciones?: { coleccion: { nombre: string } }[];
+  colecciones?: { coleccion: { id: string; nombre: string } }[];
 };
 
 type ItemCarrito = {
@@ -70,6 +76,7 @@ export default function POSPage() {
     fondoCaja: number;
   } | null>(null);
 
+  const [promos, setPromos] = useState<PromoActiva[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [escaneandoPOS, setEscaneandoPOS] = useState(false);
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
@@ -103,7 +110,30 @@ export default function POSPage() {
         if (d && !d.error) setCaja(d);
       })
       .catch(() => {});
+    fetch("/api/promociones")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (Array.isArray(d)) {
+          setPromos(
+            d.filter((p) => promoVigente(p)).map((p) => ({
+              porcentaje: p.porcentaje,
+              alcance: p.alcance,
+              coleccionId: p.coleccionId,
+              marca: p.marca,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
   }, [cargarProductos]);
+
+  // % de descuento vigente para un producto (0 si no hay promo).
+  function descuentoDe(producto: Producto): number {
+    return descuentoProducto(promos, {
+      marca: producto.marca ?? null,
+      coleccionIds: (producto.colecciones || []).map((c) => c.coleccion.id),
+    });
+  }
 
   function agregarAlCarrito(producto: Producto, variante: Variante) {
     setCarrito((actual) => {
@@ -114,13 +144,14 @@ export default function POSPage() {
           i.refId === variante.id ? { ...i, cantidad: i.cantidad + 1 } : i
         );
       }
+      const base = Number(variante.precio ?? producto.precio);
       return [
         ...actual,
         {
           refId: variante.id,
           productoNombre: producto.nombre,
           talla: variante.talla,
-          precio: Number(variante.precio ?? producto.precio),
+          precio: aplicarDescuento(base, descuentoDe(producto)),
           cantidad: 1,
           stock: variante.stock,
         },
@@ -485,6 +516,7 @@ export default function POSPage() {
                             const tallas = producto.variantes.filter(
                               (v) => v.estado !== "ARCHIVADA"
                             );
+                            const pctProd = descuentoDe(producto);
                             return (
                     <article
                       key={producto.id}
@@ -503,6 +535,11 @@ export default function POSPage() {
                         <div>
                           <h3 className="font-semibold leading-tight">
                             {producto.nombre}
+                            {pctProd > 0 && (
+                              <span className="ml-2 rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                                -{pctProd}%
+                              </span>
+                            )}
                           </h3>
                         </div>
                       </div>
@@ -512,6 +549,10 @@ export default function POSPage() {
                           const agotada = variante.stock <= 0;
                           const precioV = Number(
                             variante.precio ?? producto.precio
+                          );
+                          const precioFinal = aplicarDescuento(
+                            precioV,
+                            pctProd
                           );
                           return (
                             <button
@@ -526,7 +567,17 @@ export default function POSPage() {
                                   : "bg-white text-black hover:bg-neutral-200"
                               }`}
                             >
-                              {variante.talla} · ${precioV.toFixed(0)}{" "}
+                              {variante.talla} ·{" "}
+                              {pctProd > 0 ? (
+                                <>
+                                  <span className="line-through opacity-50">
+                                    ${precioV.toFixed(0)}
+                                  </span>{" "}
+                                  ${precioFinal.toFixed(0)}
+                                </>
+                              ) : (
+                                <>${precioV.toFixed(0)}</>
+                              )}{" "}
                               <span className="text-xs font-normal">
                                 ({variante.stock})
                               </span>

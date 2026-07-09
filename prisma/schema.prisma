@@ -85,6 +85,7 @@ model Tienda {
   ventas      Venta[]
   usoIA       UsoIA[]
   retiros     RetiroCaja[]
+  promociones Promocion[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -273,6 +274,33 @@ model UsoIA {
 
   @@index([tiendaId])
   @@index([createdAt])
+}
+
+enum AlcancePromo {
+  TIENDA
+  COLECCION
+  MARCA
+}
+
+// Promocion: descuento en % que aplica a toda la tienda, a una coleccion o a
+// una marca, dentro de un rango de fechas. Rebaja muchos productos a la vez.
+model Promocion {
+  id          String       @id @default(cuid())
+  nombre      String
+  porcentaje  Int
+  alcance     AlcancePromo @default(TIENDA)
+  coleccionId String?
+  marca       String?
+  inicio      DateTime
+  fin         DateTime
+  activa      Boolean      @default(true)
+
+  tiendaId    String
+  tienda      Tienda       @relation(fields: [tiendaId], references: [id])
+
+  createdAt   DateTime     @default(now())
+
+  @@index([tiendaId])
 }
 
 // Retiro de efectivo de la caja. Solo el administrador puede registrarlos.

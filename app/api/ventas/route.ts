@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { obtenerTiendaDeSesion, obtenerUsuarioId } from "@/lib/auth";
+import { descuentoProducto, aplicarDescuento, type PromoActiva } from "@/lib/promos";
 
 type ItemEntrada = {
   varianteId?: string;
@@ -76,6 +77,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Promociones vigentes (para rebajar el precio del lado servidor).
+    const ahora = new Date();
+    const promosRaw = await prisma.promocion.findMany({
+      where: {
+        tiendaId: tienda.id,
+        activa: true,
+        inicio: { lte: ahora },
+        fin: { gte: ahora },
+      },
+      select: { porcentaje: true, alcance: true, coleccionId: true, marca: true },
+    });
+    const promos: PromoActiva[] = promosRaw.map((p) => ({
+      porcentaje: p.porcentaje,
+      alcance: p.alcance,
+      coleccionId: p.coleccionId,
+      marca: p.marca,
+    }));
+
     const venta = await prisma.$transaction(async (tx) => {
       let total = 0;
       const itemsCrear: {
@@ -95,7 +114,11 @@ export async function POST(request: Request) {
 
         const variante = await tx.variante.findUnique({
           where: { id: item.varianteId },
-          include: { producto: true },
+          include: {
+            producto: {
+              include: { colecciones: { select: { coleccionId: true } } },
+            },
+          },
         });
 
         if (!variante) {
@@ -110,9 +133,16 @@ export async function POST(request: Request) {
           );
         }
 
-        const precioUnitario = Number(
+        const precioBase = Number(
           variante.precio ?? variante.producto.precio
         );
+        const pctDesc = descuentoProducto(promos, {
+          marca: variante.producto.marca,
+          coleccionIds: variante.producto.colecciones.map(
+            (c) => c.coleccionId
+          ),
+        });
+        const precioUnitario = aplicarDescuento(precioBase, pctDesc);
         const subtotal = precioUnitario * cantidad;
         total += subtotal;
 
