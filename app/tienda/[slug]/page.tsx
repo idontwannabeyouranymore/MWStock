@@ -5,6 +5,10 @@ import { enlaceCatalogo } from "@/lib/dominios";
 import BuscadorCatalogo from "@/components/BuscadorCatalogo";
 import { normalizarModulos } from "@/lib/modulos";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
+import {
+  normalizarPersonalizacion,
+  temaCatalogo,
+} from "@/lib/personalizacion";
 
 type PageProps = {
   params: Promise<{
@@ -53,7 +57,10 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
   }
 
   const colorTema = tienda.colorTema || "#ffffff";
-  const estilo = configEstilo(tienda.estiloCatalogo);
+  const estilo = temaCatalogo(
+    normalizarPersonalizacion(tienda.personalizacion),
+    configEstilo(tienda.estiloCatalogo)
+  );
 
   // Promociones vigentes de la tienda.
   const ahora = new Date();
@@ -130,8 +137,8 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
   });
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white">
-      {tienda.bannerUrl && (
+    <main className="min-h-screen" style={estilo.mainStyle}>
+      {tienda.bannerUrl && estilo.mostrarBanner && (
         <section className="relative h-64 w-full overflow-hidden md:h-80">
           <img
             src={tienda.bannerUrl}
@@ -145,10 +152,12 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       <section className="mx-auto max-w-6xl px-6 py-8">
         <header
           className={`animar-entrada mb-10 space-y-4 text-center ${
-            tienda.bannerUrl ? "-mt-20 relative z-10" : ""
+            tienda.bannerUrl && estilo.mostrarBanner
+              ? "-mt-20 relative z-10"
+              : ""
           }`}
         >
-          {tienda.logoUrl && (
+          {tienda.logoUrl && estilo.mostrarLogo && (
             <img
               src={tienda.logoUrl}
               alt={tienda.nombre}
@@ -164,11 +173,13 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
               Catálogo
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">{tienda.nombre}</h1>
+            <h1 className="mt-2 text-4xl font-bold">
+              {estilo.titulo || tienda.nombre}
+            </h1>
 
-            {tienda.descripcion && (
-              <p className="mx-auto mt-3 max-w-2xl text-neutral-300">
-                {tienda.descripcion}
+            {(estilo.subtitulo || tienda.descripcion) && (
+              <p className={`mx-auto mt-3 max-w-2xl ${estilo.textoTenue}`}>
+                {estilo.subtitulo || tienda.descripcion}
               </p>
             )}
 
@@ -201,7 +212,9 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
 
         <div className="mb-10">
           <BuscadorCatalogo
-            productos={productosBusqueda}
+            productos={productosBusqueda.filter(
+              (p) => !(estilo.ocultarAgotados && p.soldOut)
+            )}
             categorias={colecciones.map((c) => ({
               id: c.id,
               nombre: c.nombre,
@@ -210,6 +223,12 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
             colorTema={colorTema}
             emojis={estilo.emojis}
             iaActivo={mods.iaBusqueda}
+            mostrarPrecios={estilo.mostrarPrecios}
+            gridClass={estilo.gridClass}
+            tarjeta={estilo.tarjeta}
+            cardHover={estilo.cardHover}
+            imagenHover={estilo.imagenHover}
+            textoTenue={estilo.textoTenue}
           />
         </div>
 
@@ -223,7 +242,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
               Todavía no hay colecciones disponibles.
             </p>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={`grid gap-5 ${estilo.gridClass}`}>
               {colecciones.map((coleccion, indice) => (
                 <Link
                   key={coleccion.id}

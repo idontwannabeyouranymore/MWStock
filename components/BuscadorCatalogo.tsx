@@ -29,6 +29,12 @@ type Props = {
   colorTema: string;
   emojis: boolean;
   iaActivo?: boolean;
+  mostrarPrecios?: boolean;
+  gridClass?: string;
+  tarjeta?: string;
+  cardHover?: string;
+  imagenHover?: string;
+  textoTenue?: string;
 };
 
 export default function BuscadorCatalogo({
@@ -38,6 +44,12 @@ export default function BuscadorCatalogo({
   colorTema,
   emojis,
   iaActivo = false,
+  mostrarPrecios = true,
+  gridClass = "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+  tarjeta = "rounded-2xl border border-neutral-800 bg-neutral-900",
+  cardHover = "transition hover:-translate-y-1 hover:border-neutral-600",
+  imagenHover = "transition duration-500 group-hover:scale-105",
+  textoTenue = "text-neutral-400",
 }: Props) {
   const [q, setQ] = useState("");
   const [catsSel, setCatsSel] = useState<string[]>([]);
@@ -234,19 +246,19 @@ export default function BuscadorCatalogo({
                 {filtrados.length}{" "}
                 {filtrados.length === 1 ? "resultado" : "resultados"}
               </p>
-              <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={`mt-4 grid gap-5 ${gridClass}`}>
                 {filtrados.map((p) => (
                   <Link
                     key={p.id}
                     href={enlaceCatalogo(slug, `/producto/${p.id}`)}
-                    className="group block overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900 transition hover:-translate-y-1 hover:border-neutral-600"
+                    className={`group block overflow-hidden ${tarjeta} ${cardHover}`}
                   >
                     <div className="relative flex h-48 items-center justify-center overflow-hidden bg-neutral-800">
                       {p.imagen ? (
                         <img
                           src={p.imagen}
                           alt={p.nombre}
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          className={`h-full w-full object-cover ${imagenHover}`}
                         />
                       ) : (
                         <span className="text-neutral-500">Sin imagen</span>
@@ -261,23 +273,27 @@ export default function BuscadorCatalogo({
                     </div>
                     <div className="space-y-1 p-4">
                       <h3 className="font-semibold">{p.nombre}</h3>
-                      <p className="flex flex-wrap items-center gap-2 font-bold">
-                        {p.descuento > 0 && (
-                          <span className="text-sm font-semibold text-neutral-500 line-through opacity-60">
-                            ${p.precioOriginalMin.toFixed(2)}
+                      {mostrarPrecios && (
+                        <p className="flex flex-wrap items-center gap-2 font-bold">
+                          {p.descuento > 0 && (
+                            <span
+                              className={`text-sm font-semibold line-through opacity-60 ${textoTenue}`}
+                            >
+                              ${p.precioOriginalMin.toFixed(2)}
+                            </span>
+                          )}
+                          <span style={{ color: colorTema }}>
+                            {p.precioMin === p.precioMax
+                              ? `$${p.precioMin.toFixed(2)}`
+                              : `desde $${p.precioMin.toFixed(2)}`}
                           </span>
-                        )}
-                        <span style={{ color: colorTema }}>
-                          {p.precioMin === p.precioMax
-                            ? `$${p.precioMin.toFixed(2)}`
-                            : `desde $${p.precioMin.toFixed(2)}`}
-                        </span>
-                        {p.descuento > 0 && (
-                          <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
-                            -{p.descuento}%
-                          </span>
-                        )}
-                      </p>
+                          {p.descuento > 0 && (
+                            <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                              -{p.descuento}%
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </Link>
                 ))}

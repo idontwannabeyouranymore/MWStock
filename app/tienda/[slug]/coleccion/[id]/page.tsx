@@ -4,6 +4,10 @@ import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import { normalizarModulos } from "@/lib/modulos";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
+import {
+  normalizarPersonalizacion,
+  temaCatalogo,
+} from "@/lib/personalizacion";
 
 type PageProps = {
   params: Promise<{
@@ -86,7 +90,10 @@ export default async function ColeccionPublicaPage({
   }
 
   const colorTema = tienda.colorTema || "#ffffff";
-  const estilo = configEstilo(tienda.estiloCatalogo);
+  const estilo = temaCatalogo(
+    normalizarPersonalizacion(tienda.personalizacion),
+    configEstilo(tienda.estiloCatalogo)
+  );
 
   // Promociones vigentes de la tienda.
   const ahora = new Date();
@@ -125,14 +132,24 @@ export default async function ColeccionPublicaPage({
   // Si está habilitado, hay varias marcas y no se eligió una, mostramos el paso.
   const mostrarMarcas =
     mods.marcas && !marcaActivaVista && marcas.length > 1;
-  const productosFiltrados = marcaActivaVista
+  const productosPorMarca = marcaActivaVista
     ? productos.filter(
         (p) => ((p.marca || "").trim() || "Otros") === marcaActivaVista
       )
     : productos;
+  const productosFiltrados = estilo.ocultarAgotados
+    ? productosPorMarca.filter(
+        (p) =>
+          p.estado !== "AGOTADO" &&
+          (p.variantes as VariantePublica[]).reduce(
+            (total, v) => total + v.stock,
+            0
+          ) > 0
+      )
+    : productosPorMarca;
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white">
+    <main className="min-h-screen" style={estilo.mainStyle}>
       <section className="mx-auto max-w-6xl px-6 py-8">
         <Link
           href={
@@ -157,14 +174,14 @@ export default async function ColeccionPublicaPage({
             {marcaActivaVista ?? coleccion.nombre}
           </h1>
           {coleccion.descripcion && (
-            <p className="mt-3 max-w-2xl text-neutral-300">
+            <p className={`mt-3 max-w-2xl ${estilo.textoTenue}`}>
               {coleccion.descripcion}
             </p>
           )}
         </header>
 
         {mostrarMarcas ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid gap-5 ${estilo.gridClass}`}>
             {marcas.map((m, indice) => (
               <Link
                 key={m.nombre}
@@ -204,7 +221,7 @@ export default async function ColeccionPublicaPage({
             Esta colección todavía no tiene productos.
           </p>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid gap-5 ${estilo.gridClass}`}>
             {productosFiltrados.map((producto, indice) => {
               const variantesActivas = producto.variantes as VariantePublica[];
 
@@ -291,32 +308,33 @@ export default async function ColeccionPublicaPage({
                         {producto.nombre}
                       </h3>
 
-                      {pct > 0 ? (
-                        <p className="flex flex-wrap items-center gap-2 text-xl font-bold">
-                          <span className="text-sm font-semibold text-neutral-400 line-through opacity-60">
+                      {estilo.mostrarPrecios &&
+                        (pct > 0 ? (
+                          <p className="flex flex-wrap items-center gap-2 text-xl font-bold">
+                            <span className="text-sm font-semibold text-neutral-400 line-through opacity-60">
+                              {precioMin === precioMax
+                                ? `$${precioMin.toFixed(2)}`
+                                : `desde $${precioMin.toFixed(2)}`}
+                            </span>
+                            <span style={{ color: colorTema }}>
+                              {precioMin === precioMax
+                                ? `$${aplicarDescuento(precioMin, pct).toFixed(2)}`
+                                : `desde $${aplicarDescuento(precioMin, pct).toFixed(2)}`}
+                            </span>
+                            <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                              -{pct}%
+                            </span>
+                          </p>
+                        ) : (
+                          <p
+                            className="text-xl font-bold"
+                            style={{ color: colorTema }}
+                          >
                             {precioMin === precioMax
                               ? `$${precioMin.toFixed(2)}`
                               : `desde $${precioMin.toFixed(2)}`}
-                          </span>
-                          <span style={{ color: colorTema }}>
-                            {precioMin === precioMax
-                              ? `$${aplicarDescuento(precioMin, pct).toFixed(2)}`
-                              : `desde $${aplicarDescuento(precioMin, pct).toFixed(2)}`}
-                          </span>
-                          <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
-                            -{pct}%
-                          </span>
-                        </p>
-                      ) : (
-                        <p
-                          className="text-xl font-bold"
-                          style={{ color: colorTema }}
-                        >
-                          {precioMin === precioMax
-                            ? `$${precioMin.toFixed(2)}`
-                            : `desde $${precioMin.toFixed(2)}`}
-                        </p>
-                      )}
+                          </p>
+                        ))}
 
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-neutral-300">

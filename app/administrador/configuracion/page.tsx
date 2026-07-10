@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { urlDeTienda } from "@/lib/dominios";
 import { ESTILOS } from "@/lib/estilos-catalogo";
+import {
+  type Personalizacion,
+  PERSONALIZACION_DEFAULT,
+  normalizarPersonalizacion,
+} from "@/lib/personalizacion";
 
 type Tienda = {
   id: string;
@@ -19,6 +24,31 @@ type Tienda = {
   slug: string;
 };
 
+const inpPer =
+  "mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white";
+
+function Check({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-neutral-300">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-white"
+      />
+      {label}
+    </label>
+  );
+}
+
 export default function ConfiguracionPage() {
   const [tienda, setTienda] = useState<Tienda | null>(null);
 
@@ -31,6 +61,9 @@ export default function ConfiguracionPage() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [colorTema, setColorTema] = useState("#ffffff");
   const [estiloCatalogo, setEstiloCatalogo] = useState("JUVENIL");
+  const [per, setPer] = useState<Personalizacion>(PERSONALIZACION_DEFAULT);
+  const up = (patch: Partial<Personalizacion>) =>
+    setPer((p) => ({ ...p, ...patch }));
 
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [subiendoBanner, setSubiendoBanner] = useState(false);
@@ -53,6 +86,7 @@ export default function ConfiguracionPage() {
     setBannerUrl(data.bannerUrl || "");
     setColorTema(data.colorTema || "#ffffff");
     setEstiloCatalogo(data.estiloCatalogo || "JUVENIL");
+    setPer(normalizarPersonalizacion(data.personalizacion));
   }
 
   async function subirImagen(archivo: File) {
@@ -98,6 +132,7 @@ export default function ConfiguracionPage() {
         bannerUrl,
         colorTema,
         estiloCatalogo,
+        personalizacion: per,
       }),
     });
 
@@ -293,6 +328,174 @@ export default function ConfiguracionPage() {
             <p className="text-xs text-neutral-500">
               {ESTILOS.find((o) => o.valor === estiloCatalogo)?.descripcion}
             </p>
+          </div>
+
+          {/* === Personalización del catálogo === */}
+          <div className="space-y-5 rounded-xl border border-neutral-800 bg-neutral-950 p-5">
+            <div>
+              <h3 className="font-semibold">Personalización del catálogo</h3>
+              <p className="text-xs text-neutral-500">
+                Dale tu estilo al catálogo público. El color principal (acento)
+                es el de arriba. Se aplica al guardar.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-neutral-300">
+                Colores y fondo
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm">
+                  <span className="text-neutral-400">Modo</span>
+                  <select
+                    value={per.modo}
+                    onChange={(e) =>
+                      up({ modo: e.target.value as Personalizacion["modo"] })
+                    }
+                    className={inpPer}
+                  >
+                    <option value="oscuro">Oscuro</option>
+                    <option value="claro">Claro</option>
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className="text-neutral-400">
+                    Color de fondo (opcional)
+                  </span>
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="color"
+                      value={
+                        per.colorFondo ||
+                        (per.modo === "claro" ? "#f6f7f9" : "#0a0a0a")
+                      }
+                      onChange={(e) => up({ colorFondo: e.target.value })}
+                      className="h-11 w-14 rounded-lg border border-neutral-700 bg-neutral-950"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => up({ colorFondo: "" })}
+                      className="rounded-lg border border-neutral-700 px-3 text-sm text-neutral-400 hover:border-white"
+                    >
+                      Usar el del modo
+                    </button>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-neutral-300">
+                Tipografía y tarjetas
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="text-sm">
+                  <span className="text-neutral-400">Fuente</span>
+                  <select
+                    value={per.fuente}
+                    onChange={(e) =>
+                      up({
+                        fuente: e.target.value as Personalizacion["fuente"],
+                      })
+                    }
+                    className={inpPer}
+                  >
+                    <option value="moderna">Moderna</option>
+                    <option value="elegante">Elegante (serif)</option>
+                    <option value="redondeada">Redondeada</option>
+                    <option value="tecnica">Técnica (mono)</option>
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className="text-neutral-400">Esquinas</span>
+                  <select
+                    value={per.esquinas}
+                    onChange={(e) =>
+                      up({
+                        esquinas: e.target.value as Personalizacion["esquinas"],
+                      })
+                    }
+                    className={inpPer}
+                  >
+                    <option value="redondeadas">Redondeadas</option>
+                    <option value="suaves">Suaves</option>
+                    <option value="rectas">Rectas</option>
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className="text-neutral-400">Columnas</span>
+                  <select
+                    value={per.columnas}
+                    onChange={(e) =>
+                      up({
+                        columnas: e.target.value as Personalizacion["columnas"],
+                      })
+                    }
+                    className={inpPer}
+                  >
+                    <option value="compacto">Compacto</option>
+                    <option value="normal">Normal</option>
+                    <option value="amplio">Amplio</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-neutral-300">Portada</p>
+              <input
+                value={per.titulo}
+                onChange={(e) => up({ titulo: e.target.value })}
+                placeholder="Título del catálogo (vacío = nombre de la tienda)"
+                className={inpPer.replace("mt-1 ", "")}
+              />
+              <input
+                value={per.subtitulo}
+                onChange={(e) => up({ subtitulo: e.target.value })}
+                placeholder="Subtítulo o eslogan (vacío = descripción)"
+                className={inpPer.replace("mt-1 ", "")}
+              />
+              <div className="flex flex-wrap gap-4 pt-1">
+                <Check
+                  label="Mostrar banner"
+                  checked={per.mostrarBanner}
+                  onChange={(v) => up({ mostrarBanner: v })}
+                />
+                <Check
+                  label="Mostrar logo grande"
+                  checked={per.mostrarLogo}
+                  onChange={(v) => up({ mostrarLogo: v })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-neutral-300">
+                Mostrar / ocultar
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Check
+                  label="Etiquetas Nuevo/Destacado"
+                  checked={per.mostrarBadges}
+                  onChange={(v) => up({ mostrarBadges: v })}
+                />
+                <Check
+                  label="Emojis"
+                  checked={per.mostrarEmojis}
+                  onChange={(v) => up({ mostrarEmojis: v })}
+                />
+                <Check
+                  label="Mostrar precios"
+                  checked={per.mostrarPrecios}
+                  onChange={(v) => up({ mostrarPrecios: v })}
+                />
+                <Check
+                  label="Ocultar agotados"
+                  checked={per.ocultarAgotados}
+                  onChange={(v) => up({ ocultarAgotados: v })}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950 p-4">

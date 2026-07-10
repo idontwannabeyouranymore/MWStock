@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { obtenerTiendaDeSesion } from "@/lib/auth";
+import { obtenerTiendaDeSesion, obtenerRol } from "@/lib/auth";
+import { normalizarPersonalizacion } from "@/lib/personalizacion";
 
 export async function GET() {
   try {
@@ -35,6 +36,13 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if ((await obtenerRol()) !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Solo el administrador puede editar la tienda" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     const tienda = await prisma.tienda.update({
@@ -50,6 +58,9 @@ export async function PATCH(request: Request) {
         colorTema: body.colorTema,
         ...(body.estiloCatalogo !== undefined && {
           estiloCatalogo: body.estiloCatalogo,
+        }),
+        ...(body.personalizacion !== undefined && {
+          personalizacion: normalizarPersonalizacion(body.personalizacion),
         }),
       },
     });

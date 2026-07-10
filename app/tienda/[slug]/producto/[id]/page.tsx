@@ -4,6 +4,10 @@ import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import GaleriaProducto from "@/components/GaleriaProducto";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
+import {
+  normalizarPersonalizacion,
+  temaCatalogo,
+} from "@/lib/personalizacion";
 
 type PageProps = {
   params: Promise<{
@@ -64,7 +68,10 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
   }
 
   const colorTema = tienda.colorTema || "#ffffff";
-  const estilo = configEstilo(tienda.estiloCatalogo);
+  const estilo = temaCatalogo(
+    normalizarPersonalizacion(tienda.personalizacion),
+    configEstilo(tienda.estiloCatalogo)
+  );
 
   // Promociones vigentes de la tienda y descuento aplicable a este producto.
   const ahora = new Date();
@@ -110,7 +117,7 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white">
+    <main className="min-h-screen" style={estilo.mainStyle}>
       <section className="mx-auto max-w-5xl px-6 py-8">
         <Link
           href={enlaceCatalogo(slug)}
@@ -145,29 +152,30 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
               )}
             </div>
 
-            {pct > 0 ? (
-              <p className="flex flex-wrap items-center gap-3 text-3xl font-bold">
-                <span className="text-xl font-semibold text-neutral-400 line-through opacity-60">
+            {estilo.mostrarPrecios &&
+              (pct > 0 ? (
+                <p className="flex flex-wrap items-center gap-3 text-3xl font-bold">
+                  <span className="text-xl font-semibold text-neutral-400 line-through opacity-60">
+                    {precioMin === precioMax
+                      ? `$${precioMin.toFixed(2)}`
+                      : `desde $${precioMin.toFixed(2)}`}
+                  </span>
+                  <span style={{ color: colorTema }}>
+                    {precioMin === precioMax
+                      ? `$${aplicarDescuento(precioMin, pct).toFixed(2)}`
+                      : `desde $${aplicarDescuento(precioMin, pct).toFixed(2)}`}
+                  </span>
+                  <span className="rounded-full bg-green-600 px-2 py-0.5 text-sm font-bold text-white">
+                    -{pct}%
+                  </span>
+                </p>
+              ) : (
+                <p className="text-3xl font-bold" style={{ color: colorTema }}>
                   {precioMin === precioMax
                     ? `$${precioMin.toFixed(2)}`
                     : `desde $${precioMin.toFixed(2)}`}
-                </span>
-                <span style={{ color: colorTema }}>
-                  {precioMin === precioMax
-                    ? `$${aplicarDescuento(precioMin, pct).toFixed(2)}`
-                    : `desde $${aplicarDescuento(precioMin, pct).toFixed(2)}`}
-                </span>
-                <span className="rounded-full bg-green-600 px-2 py-0.5 text-sm font-bold text-white">
-                  -{pct}%
-                </span>
-              </p>
-            ) : (
-              <p className="text-3xl font-bold" style={{ color: colorTema }}>
-                {precioMin === precioMax
-                  ? `$${precioMin.toFixed(2)}`
-                  : `desde $${precioMin.toFixed(2)}`}
-              </p>
-            )}
+                </p>
+              ))}
 
             {producto.descripcion && (
               <p className="leading-relaxed text-neutral-300">
@@ -192,11 +200,12 @@ export default async function ProductoPublicoPage({ params }: PageProps) {
                     >
                       <div>
                         <p className="font-semibold">{variante.talla}</p>
-                        {(() => {
-                          const base = Number(
-                            variante.precio ?? producto.precio
-                          );
-                          return pct > 0 ? (
+                        {estilo.mostrarPrecios &&
+                          (() => {
+                            const base = Number(
+                              variante.precio ?? producto.precio
+                            );
+                            return pct > 0 ? (
                             <p className="flex items-center gap-2 text-sm font-semibold">
                               <span className="text-neutral-400 line-through opacity-60">
                                 ${base.toFixed(2)}
