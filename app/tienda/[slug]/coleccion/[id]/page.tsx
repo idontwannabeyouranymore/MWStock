@@ -335,38 +335,6 @@ export default async function ColeccionPublicaPage({
                               : `desde $${precioMin.toFixed(2)}`}
                           </p>
                         ))}
-
-                      <div className="space-y-2">
-                        <p className="text-sm font-semibold text-neutral-300">
-                          Presentaciones
-                        </p>
-                        {variantesActivas.length === 0 ? (
-                          <p className="text-sm text-neutral-500">
-                            Sin presentaciones
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {variantesActivas.map((variante) => (
-                              <span
-                                key={variante.id}
-                                className="rounded-full px-3 py-1 text-xs font-semibold transition"
-                                style={{
-                                  backgroundColor:
-                                    variante.stock > 0
-                                      ? colorTema
-                                      : "#262626",
-                                  color:
-                                    variante.stock > 0
-                                      ? "#000000"
-                                      : "#737373",
-                                }}
-                              >
-                                {variante.talla}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </Link>
 
