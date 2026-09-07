@@ -267,13 +267,6 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
                       <h3 className="text-xl font-bold drop-shadow">
                         {coleccion.nombre}
                       </h3>
-                      <p
-                        className="text-sm font-semibold"
-                        style={{ color: colorTema }}
-                      >
-                        {coleccion.total}{" "}
-                        {coleccion.total === 1 ? "producto" : "productos"}
-                      </p>
                     </div>
                   </div>
 
