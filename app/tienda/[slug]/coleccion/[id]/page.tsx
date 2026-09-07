@@ -205,12 +205,6 @@ export default async function ColeccionPublicaPage({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <h3 className="text-xl font-bold drop-shadow">{m.nombre}</h3>
-                    <p
-                      className="text-sm font-semibold"
-                      style={{ color: colorTema }}
-                    >
-                      {m.total} {m.total === 1 ? "producto" : "productos"}
-                    </p>
                   </div>
                 </div>
               </Link>
