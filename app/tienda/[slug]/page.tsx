@@ -198,16 +198,27 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
             )}
           </div>
 
-          {tienda.whatsapp && (
-            <a
-              href={`https://wa.me/${tienda.whatsapp}`}
-              target="_blank"
-              className="inline-flex rounded-xl px-5 py-3 font-semibold text-black transition hover:scale-105"
-              style={{ backgroundColor: colorTema }}
-            >
-              {estilo.emojis ? "💬 " : ""}Contactar por WhatsApp
-            </a>
-          )}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {tienda.whatsapp && (
+              <a
+                href={`https://wa.me/${tienda.whatsapp}`}
+                target="_blank"
+                className="inline-flex rounded-xl px-5 py-3 font-semibold text-black transition hover:scale-105"
+                style={{ backgroundColor: colorTema }}
+              >
+                {estilo.emojis ? "💬 " : ""}Contactar por WhatsApp
+              </a>
+            )}
+            {mods.mayoreo && (
+              <Link
+                href={enlaceCatalogo(slug, "/mayoreo")}
+                className="inline-flex rounded-xl border px-5 py-3 font-semibold transition hover:opacity-80"
+                style={{ borderColor: colorTema, color: colorTema }}
+              >
+                {estilo.emojis ? "📦 " : ""}Ver mayoreo
+              </Link>
+            )}
+          </div>
         </header>
 
         <div className="mb-10">

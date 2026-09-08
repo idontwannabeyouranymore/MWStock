@@ -22,6 +22,7 @@ const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
   { href: "/administrador/inventario", label: "Inventario", mod: "inventario" },
   { href: "/administrador/ventas", label: "Ventas", mod: "ventas" },
   { href: "/administrador/promociones", label: "Promociones", mod: "promociones" },
+  { href: "/administrador/mayoreo", label: "Mayoreo", mod: "mayoreo" },
   { href: "/administrador/corte", label: "Corte de caja", mod: "corte" },
   { href: "/administrador/qr", label: "Código QR", mod: null },
   { href: "/administrador/vendedores", label: "Vendedores", mod: null },

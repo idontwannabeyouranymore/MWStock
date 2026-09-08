@@ -77,6 +77,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await tx.venta.deleteMany({ where: { tiendaId: id } });
     await tx.retiroCaja.deleteMany({ where: { tiendaId: id } });
     await tx.promocion.deleteMany({ where: { tiendaId: id } });
+    await tx.mayoreo.deleteMany({ where: { tiendaId: id } });
     await tx.usoIA.deleteMany({ where: { tiendaId: id } });
     await tx.movimientoInventario.deleteMany({
       where: { variante: { producto: { tiendaId: id } } },

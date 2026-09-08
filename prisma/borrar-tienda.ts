@@ -56,6 +56,7 @@ async function main() {
     await tx.venta.deleteMany({ where: { tiendaId } });
     await tx.retiroCaja.deleteMany({ where: { tiendaId } });
     await tx.promocion.deleteMany({ where: { tiendaId } });
+    await tx.mayoreo.deleteMany({ where: { tiendaId } });
     await tx.usoIA.deleteMany({ where: { tiendaId } });
     await tx.movimientoInventario.deleteMany({
       where: { variante: { producto: { tiendaId } } },

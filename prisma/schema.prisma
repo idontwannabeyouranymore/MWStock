@@ -87,6 +87,7 @@ model Tienda {
   usoIA       UsoIA[]
   retiros     RetiroCaja[]
   promociones Promocion[]
+  mayoreos    Mayoreo[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -281,6 +282,29 @@ enum AlcancePromo {
   TIENDA
   COLECCION
   MARCA
+}
+
+enum AlcanceMayoreo {
+  COLECCION
+  MARCA
+}
+
+// Configuración de mayoreo: para una colección o una marca, define niveles de
+// precio por volumen (JSON: [{ min, tipo: "porcentaje"|"precio", valor }]).
+model Mayoreo {
+  id          String         @id @default(cuid())
+  alcance     AlcanceMayoreo @default(COLECCION)
+  coleccionId String?
+  marca       String?
+  niveles     Json
+  activo      Boolean        @default(true)
+
+  tiendaId    String
+  tienda      Tienda         @relation(fields: [tiendaId], references: [id])
+
+  createdAt   DateTime       @default(now())
+
+  @@index([tiendaId])
 }
 
 // Promocion: descuento en % que aplica a toda la tienda, a una coleccion o a

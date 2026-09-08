@@ -29,6 +29,7 @@ export async function POST(request: Request) {
       // Caja y promociones
       await tx.retiroCaja.deleteMany({ where: { tiendaId } });
       await tx.promocion.deleteMany({ where: { tiendaId } });
+      await tx.mayoreo.deleteMany({ where: { tiendaId } });
 
       // Inventario / catálogo
       await tx.movimientoInventario.deleteMany({

@@ -8,6 +8,7 @@ export type ClaveModulo =
   | "ventas"
   | "corte"
   | "promociones"
+  | "mayoreo"
   | "marcas"
   | "iaInventario"
   | "iaFondoBlanco"
@@ -66,6 +67,13 @@ export const MODULOS: {
     descripcion:
       "Descuentos por colección, marca o toda la tienda, con fechas.",
     porDefecto: true,
+  },
+  {
+    clave: "mayoreo",
+    etiqueta: "Mayoreo",
+    descripcion:
+      "Catálogo de mayoreo con precios por volumen por colección o marca.",
+    porDefecto: false,
   },
   {
     clave: "marcas",
