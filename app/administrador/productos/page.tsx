@@ -67,6 +67,9 @@ export default function ProductosPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [coleccionVista, setColeccionVista] = useState<string | null>(null);
+  const [marcasAbiertas, setMarcasAbiertas] = useState<Set<string>>(
+    new Set()
+  );
 
   const etiquetaPresentacion = "presentación";
 
@@ -268,6 +271,16 @@ export default function ProductosPage() {
         .filter((id): id is string => !!id)
     );
     if (cols.size === 1) setColeccionId([...cols][0]);
+  }
+
+  // Abre/cierra una marca en la vista de productos (tipo árbol de VS Code).
+  function toggleMarca(clave: string) {
+    setMarcasAbiertas((actual) => {
+      const nueva = new Set(actual);
+      if (nueva.has(clave)) nueva.delete(clave);
+      else nueva.add(clave);
+      return nueva;
+    });
   }
 
   function limpiarFormulario() {
@@ -799,16 +812,25 @@ export default function ProductosPage() {
                       ({grupo.total})
                     </span>
                   </h2>
-                  {grupo.marcas.map(([marca, prods]) => (
-                    <div key={marca} className="space-y-3">
-                      {grupo.marcas.length > 1 && (
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
-                          {marca}{" "}
-                          <span className="text-neutral-600">
-                            ({prods.length})
-                          </span>
-                        </h3>
-                      )}
+                  {grupo.marcas.map(([marca, prods]) => {
+                    const keyMarca = `${grupo.id}::${marca}`;
+                    const abierta = marcasAbiertas.has(keyMarca);
+                    return (
+                    <div key={marca} className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleMarca(keyMarca)}
+                        className="flex w-full items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider text-neutral-300 transition hover:bg-neutral-800"
+                      >
+                        <span className="text-neutral-500">
+                          {abierta ? "▾" : "▸"}
+                        </span>
+                        {marca}{" "}
+                        <span className="text-neutral-600">
+                          ({prods.length})
+                        </span>
+                      </button>
+                      {abierta && (
                       <div className="grid gap-4">
                         {prods.map((producto) => {
                           const imagenPrincipal = producto.imagenes?.[0];
@@ -929,8 +951,10 @@ export default function ProductosPage() {
                           );
                         })}
                       </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
             </div>
