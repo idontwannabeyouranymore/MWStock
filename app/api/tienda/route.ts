@@ -62,6 +62,12 @@ export async function PATCH(request: Request) {
         ...(body.personalizacion !== undefined && {
           personalizacion: normalizarPersonalizacion(body.personalizacion),
         }),
+        ...(body.imagenesMarcas !== undefined && {
+          imagenesMarcas:
+            body.imagenesMarcas && typeof body.imagenesMarcas === "object"
+              ? body.imagenesMarcas
+              : {},
+        }),
       },
     });
 

@@ -6,6 +6,7 @@ type Coleccion = {
   id: string;
   nombre: string;
   descripcion: string | null;
+  imagenUrl: string | null;
   estado: string;
 };
 
@@ -15,7 +16,26 @@ export default function ColeccionesPage() {
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [imagenUrl, setImagenUrl] = useState("");
+  const [subiendo, setSubiendo] = useState(false);
   const [cargando, setCargando] = useState(false);
+
+  async function subirImagen(archivo: File) {
+    setSubiendo(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", archivo);
+      fd.append("productoId", "coleccion");
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!r.ok) throw new Error("No se pudo subir la imagen");
+      const d = await r.json();
+      setImagenUrl(d.url as string);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error al subir la imagen");
+    } finally {
+      setSubiendo(false);
+    }
+  }
 
   async function obtenerColecciones() {
     const response = await fetch("/api/colecciones");
@@ -32,12 +52,14 @@ export default function ColeccionesPage() {
     setEditandoId(null);
     setNombre("");
     setDescripcion("");
+    setImagenUrl("");
   }
 
   function cargarParaEditar(coleccion: Coleccion) {
     setEditandoId(coleccion.id);
     setNombre(coleccion.nombre);
     setDescripcion(coleccion.descripcion || "");
+    setImagenUrl(coleccion.imagenUrl || "");
 
     window.scrollTo({
       top: 0,
@@ -65,6 +87,7 @@ export default function ColeccionesPage() {
           body: JSON.stringify({
             nombre,
             descripcion,
+            imagenUrl: imagenUrl || null,
           }),
         });
 
@@ -80,6 +103,7 @@ export default function ColeccionesPage() {
           body: JSON.stringify({
             nombre,
             descripcion,
+            imagenUrl: imagenUrl || null,
           }),
         });
 
@@ -164,6 +188,50 @@ export default function ColeccionesPage() {
             className="min-h-24 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
           />
 
+          <div className="space-y-2">
+            <label className="text-sm text-neutral-300">
+              Imagen de la colección (opcional)
+            </label>
+            <div className="flex items-center gap-3">
+              {imagenUrl ? (
+                <img
+                  src={imagenUrl}
+                  alt="Colección"
+                  className="h-24 w-24 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-neutral-800 text-xs text-neutral-500">
+                  Sin imagen
+                </div>
+              )}
+              {imagenUrl && (
+                <button
+                  type="button"
+                  onClick={() => setImagenUrl("")}
+                  className="rounded-lg border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:border-red-700 hover:text-red-400"
+                >
+                  Quitar
+                </button>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) subirImagen(f);
+              }}
+              className="block w-full text-sm text-neutral-400 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
+            />
+            {subiendo && (
+              <p className="text-xs text-neutral-500">Subiendo...</p>
+            )}
+            <p className="text-xs text-neutral-500">
+              Si no subes una, el catálogo tomará la foto de un producto de la
+              colección.
+            </p>
+          </div>
+
           <div className="flex gap-3">
             <button
               disabled={cargando}
@@ -203,18 +271,27 @@ export default function ColeccionesPage() {
                   className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {coleccion.nombre}
-                      </h3>
+                    <div className="flex items-start gap-4">
+                      {coleccion.imagenUrl && (
+                        <img
+                          src={coleccion.imagenUrl}
+                          alt={coleccion.nombre}
+                          className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                        />
+                      )}
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {coleccion.nombre}
+                        </h3>
 
-                      <p className="mt-1 text-sm text-neutral-400">
-                        {coleccion.descripcion || "Sin descripción"}
-                      </p>
+                        <p className="mt-1 text-sm text-neutral-400">
+                          {coleccion.descripcion || "Sin descripción"}
+                        </p>
 
-                      <p className="mt-2 text-xs text-neutral-500">
-                        Estado: {coleccion.estado}
-                      </p>
+                        <p className="mt-2 text-xs text-neutral-500">
+                          Estado: {coleccion.estado}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex gap-2">

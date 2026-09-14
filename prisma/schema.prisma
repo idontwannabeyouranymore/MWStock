@@ -66,6 +66,7 @@ model Tienda {
   colorTema   String?  @default("#ffffff")
   estiloCatalogo String @default("JUVENIL")
   personalizacion Json?
+  imagenesMarcas Json?
   whatsapp    String?
   instagram   String?
   direccion   String?

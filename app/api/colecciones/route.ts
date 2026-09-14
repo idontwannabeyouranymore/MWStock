@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { nombre, descripcion } = body;
+    const { nombre, descripcion, imagenUrl } = body;
 
     if (!nombre) {
       return NextResponse.json(
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       data: {
         nombre,
         descripcion,
+        imagenUrl: imagenUrl || null,
         tiendaId: tienda.id,
       },
     });

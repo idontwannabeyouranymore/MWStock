@@ -115,7 +115,14 @@ export default async function ColeccionPublicaPage({
   const mods = normalizarModulos(tienda.modulos);
   const marcaActivaVista = mods.marcas ? marcaActiva : null;
 
-  // Marcas presentes en la colección (con imagen de muestra y conteo).
+  // Imágenes elegidas por marca (definidas por el administrador).
+  const imgsMarca =
+    tienda.imagenesMarcas && typeof tienda.imagenesMarcas === "object"
+      ? (tienda.imagenesMarcas as Record<string, string>)
+      : {};
+
+  // Marcas presentes en la colección (con imagen y conteo). Si el admin asignó
+  // una imagen a la marca, se usa esa; si no, una foto de un producto.
   const marcasMap = new Map<
     string,
     { nombre: string; total: number; imagen: string | null }
@@ -124,7 +131,8 @@ export default async function ColeccionPublicaPage({
     const m = (p.marca || "").trim() || "Otros";
     const cur = marcasMap.get(m) || { nombre: m, total: 0, imagen: null };
     cur.total += 1;
-    if (!cur.imagen && p.imagenes[0]) cur.imagen = p.imagenes[0].url;
+    if (imgsMarca[m]) cur.imagen = imgsMarca[m];
+    else if (!cur.imagen && p.imagenes[0]) cur.imagen = p.imagenes[0].url;
     marcasMap.set(m, cur);
   }
   const marcas = [...marcasMap.values()].sort((a, b) => b.total - a.total);
