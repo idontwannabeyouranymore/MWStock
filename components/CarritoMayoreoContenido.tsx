@@ -27,6 +27,7 @@ export default function CarritoMayoreoContenido({
   hrefSeguir: string;
 }) {
   const [items, setItems] = useState<ItemCarrito[]>([]);
+  const [enviado, setEnviado] = useState(false);
 
   useEffect(() => {
     const refrescar = () => setItems(leerCarrito(slug));
@@ -77,6 +78,8 @@ export default function CarritoMayoreoContenido({
       return;
     }
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(txt)}`, "_blank");
+    // Pedimos confirmación antes de vaciar (por si el cliente no alcanzó a enviar).
+    setEnviado(true);
   }
 
   if (items.length === 0) {
@@ -96,6 +99,36 @@ export default function CarritoMayoreoContenido({
 
   return (
     <div className="space-y-4 pb-28">
+      {enviado && (
+        <div className="rounded-2xl border border-green-700 bg-green-950/30 p-4">
+          <p className="font-semibold text-white">
+            ¿Ya enviaste tu pedido por WhatsApp?
+          </p>
+          <p className="mt-1 text-sm text-neutral-300">
+            Si ya lo mandaste, vacía el carrito. Si no alcanzaste, mantenlo para
+            intentar de nuevo.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                limpiarCarrito(slug);
+                setItems([]);
+                setEnviado(false);
+              }}
+              className="rounded-xl bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700"
+            >
+              Sí, vaciar carrito
+            </button>
+            <button
+              onClick={() => setEnviado(false)}
+              className="rounded-xl border border-neutral-700 px-4 py-2 font-semibold text-neutral-300 hover:border-white"
+            >
+              Todavía no
+            </button>
+          </div>
+        </div>
+      )}
+
       {listaGrupos.map(([pid, g]) => {
         const totalProd = piezasDeProducto(items, pid);
         const unit = precioUnitarioLinea(items, g.lineas[0]);
