@@ -18,6 +18,7 @@ const links: { href: string; label: string; mod: ClaveModulo | null }[] = [
   { href: "/administrador/colecciones", label: "Colecciones", mod: "colecciones" },
   { href: "/administrador/marcas", label: "Imágenes de marca", mod: "marcas" },
   { href: "/administrador/productos", label: "Productos", mod: null },
+  { href: "/administrador/asignador", label: "Asignador de tallas", mod: null },
   { href: "/administrador/importar", label: "Importar", mod: "importar" },
   { href: "/administrador/fotos", label: "Fotos (IA)", mod: "iaEmparejarFotos" },
   { href: "/administrador/inventario", label: "Inventario", mod: "inventario" },
