@@ -5,6 +5,7 @@ import { enlaceCatalogo } from "@/lib/dominios";
 import BuscadorCatalogo from "@/components/BuscadorCatalogo";
 import { normalizarModulos } from "@/lib/modulos";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
+import { tallasParaTarjeta } from "@/lib/tallas";
 import {
   normalizarPersonalizacion,
   temaCatalogo,
@@ -109,6 +110,9 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       precioMax: aplicarDescuento(precioMax, pct),
       precioOriginalMin: precioMin,
       descuento: pct,
+      tallas: tallasParaTarjeta(
+        p.variantes.filter((v) => v.stock > 0).map((v) => v.talla)
+      ),
       marca: p.marca ?? "",
       coleccionIds,
     };

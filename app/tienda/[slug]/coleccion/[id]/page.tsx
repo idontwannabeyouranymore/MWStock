@@ -4,6 +4,7 @@ import { configEstilo, esNuevo } from "@/lib/estilos-catalogo";
 import { enlaceCatalogo } from "@/lib/dominios";
 import { normalizarModulos } from "@/lib/modulos";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
+import { tallasParaTarjeta } from "@/lib/tallas";
 import {
   normalizarPersonalizacion,
   temaCatalogo,
@@ -236,6 +237,11 @@ export default async function ColeccionPublicaPage({
                 producto.estado === "AGOTADO" || stockTotal === 0;
 
               const imagenPrincipal = producto.imagenes[0];
+              const tallasCard = tallasParaTarjeta(
+                variantesActivas
+                  .filter((v) => v.stock > 0)
+                  .map((v) => v.talla)
+              );
               const nuevo = estilo.badges && esNuevo(producto.createdAt);
               const destacado = estilo.badges && producto.destacado;
 
@@ -306,6 +312,18 @@ export default async function ColeccionPublicaPage({
                     </div>
 
                     <div className="space-y-3 p-5">
+                      {tallasCard.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {tallasCard.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded-md bg-black px-2.5 py-1 text-xs font-semibold text-white"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <h3 className="text-lg font-semibold">
                         {producto.nombre}
                       </h3>

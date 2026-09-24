@@ -13,6 +13,7 @@ type ProductoBusqueda = {
   precioMax: number;
   precioOriginalMin: number;
   descuento: number;
+  tallas: string[];
   marca: string;
   coleccionIds: string[];
 };
@@ -272,6 +273,18 @@ export default function BuscadorCatalogo({
                       )}
                     </div>
                     <div className="space-y-1 p-4">
+                      {p.tallas.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {p.tallas.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded-md bg-black px-2 py-0.5 text-xs font-semibold text-white"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <h3 className="font-semibold">{p.nombre}</h3>
                       {mostrarPrecios && (
                         <p className="flex flex-wrap items-center gap-2 font-bold">
