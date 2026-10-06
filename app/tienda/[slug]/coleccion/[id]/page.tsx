@@ -5,6 +5,7 @@ import { enlaceCatalogo } from "@/lib/dominios";
 import { normalizarModulos } from "@/lib/modulos";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
 import { tallasParaTarjeta } from "@/lib/tallas";
+import { imgCatalogo } from "@/lib/img";
 import {
   normalizarPersonalizacion,
   temaCatalogo,
@@ -204,7 +205,7 @@ export default async function ColeccionPublicaPage({
                 <div className="relative flex h-48 items-center justify-center overflow-hidden bg-neutral-800">
                   {m.imagen ? (
                     <img
-                      src={m.imagen}
+                      src={imgCatalogo(m.imagen, 600)}
                       alt={m.nombre}
                       className={`h-full w-full object-cover ${estilo.imagenHover}`}
                     />
@@ -278,7 +279,7 @@ export default async function ColeccionPublicaPage({
                     <div className="relative flex h-64 items-center justify-center overflow-hidden bg-neutral-800">
                       {imagenPrincipal ? (
                         <img
-                          src={imagenPrincipal.url}
+                          src={imgCatalogo(imagenPrincipal.url, 600)}
                           alt={producto.nombre}
                           className={`h-full w-full object-cover ${estilo.imagenHover}`}
                         />

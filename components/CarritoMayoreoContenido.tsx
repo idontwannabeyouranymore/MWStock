@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { imgCatalogo } from "@/lib/img";
 import { useEffect, useState } from "react";
 import {
   actualizarCantidad,
@@ -142,7 +143,7 @@ export default function CarritoMayoreoContenido({
                 {g.imagen ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={g.imagen}
+                    src={imgCatalogo(g.imagen, 150)}
                     alt={g.nombre}
                     className="h-full w-full object-cover"
                   />

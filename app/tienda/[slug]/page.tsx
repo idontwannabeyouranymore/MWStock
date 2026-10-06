@@ -6,6 +6,7 @@ import BuscadorCatalogo from "@/components/BuscadorCatalogo";
 import { normalizarModulos } from "@/lib/modulos";
 import { descuentoProducto, aplicarDescuento } from "@/lib/promos";
 import { tallasParaTarjeta } from "@/lib/tallas";
+import { imgCatalogo } from "@/lib/img";
 import {
   normalizarPersonalizacion,
   temaCatalogo,
@@ -145,7 +146,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       {tienda.bannerUrl && estilo.mostrarBanner && (
         <section className="relative h-64 w-full overflow-hidden md:h-80">
           <img
-            src={tienda.bannerUrl}
+            src={imgCatalogo(tienda.bannerUrl, 1400)}
             alt={`Banner de ${tienda.nombre}`}
             className="h-full w-full object-cover"
           />
@@ -163,7 +164,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
         >
           {tienda.logoUrl && estilo.mostrarLogo && (
             <img
-              src={tienda.logoUrl}
+              src={imgCatalogo(tienda.logoUrl, 250)}
               alt={tienda.nombre}
               className="mx-auto h-28 w-28 rounded-full border-4 border-neutral-950 object-cover shadow-xl"
             />
@@ -268,7 +269,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
                   <div className="relative flex h-56 items-center justify-center overflow-hidden bg-neutral-800">
                     {coleccion.portada ? (
                       <img
-                        src={coleccion.portada}
+                        src={imgCatalogo(coleccion.portada, 600)}
                         alt={coleccion.nombre}
                         className={`h-full w-full object-cover ${estilo.imagenHover}`}
                       />

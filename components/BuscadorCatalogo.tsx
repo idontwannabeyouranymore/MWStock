@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { imgCatalogo } from "@/lib/img";
 import { enlaceCatalogo } from "@/lib/dominios";
 
 type ProductoBusqueda = {
@@ -257,7 +258,7 @@ export default function BuscadorCatalogo({
                     <div className="relative flex h-48 items-center justify-center overflow-hidden bg-neutral-800">
                       {p.imagen ? (
                         <img
-                          src={p.imagen}
+                          src={imgCatalogo(p.imagen, 600)}
                           alt={p.nombre}
                           className={`h-full w-full object-cover ${imagenHover}`}
                         />

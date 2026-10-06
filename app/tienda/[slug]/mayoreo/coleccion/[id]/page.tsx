@@ -13,6 +13,7 @@ import {
   type MayoreoConfig,
 } from "@/lib/mayoreo";
 import BarraCarritoMayoreo from "@/components/BarraCarritoMayoreo";
+import { imgCatalogo } from "@/lib/img";
 
 type PageProps = { params: Promise<{ slug: string; id: string }> };
 
@@ -133,7 +134,7 @@ export default async function MayoreoColeccionPage({ params }: PageProps) {
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={img.url}
+                        src={imgCatalogo(img.url, 600)}
                         alt={p.nombre}
                         className={`h-full w-full object-cover ${estilo.imagenHover}`}
                       />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { imgCatalogo } from "@/lib/img";
 
 type Props = {
   imagenes: { url: string }[];
@@ -31,7 +32,7 @@ export default function GaleriaProducto({
         <div className="relative overflow-hidden bg-neutral-800">
           {principal ? (
             <img
-              src={principal.url}
+              src={imgCatalogo(principal.url, 1000)}
               alt={nombre}
               className="block h-auto w-full"
             />
@@ -82,7 +83,7 @@ export default function GaleriaProducto({
               }}
             >
               <img
-                src={imagen.url}
+                src={imgCatalogo(imagen.url, 200)}
                 alt={`${nombre} ${i + 1}`}
                 className="h-full w-full object-cover"
               />
