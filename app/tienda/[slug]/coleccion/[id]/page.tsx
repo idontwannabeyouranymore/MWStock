@@ -111,7 +111,12 @@ export default async function ColeccionPublicaPage({
 
   const productos = coleccion.productos
     .map(({ producto }) => producto)
-    .filter((producto) => producto.estado !== "ARCHIVADO");
+    .filter((producto) => producto.estado !== "ARCHIVADO")
+    // Más nuevo primero.
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
   // El nivel de marcas solo aplica si el dueño habilitó esa herramienta.
   const mods = normalizarModulos(tienda.modulos);

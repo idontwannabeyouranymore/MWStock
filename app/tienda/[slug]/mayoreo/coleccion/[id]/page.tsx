@@ -88,6 +88,10 @@ export default async function MayoreoColeccionPage({ params }: PageProps) {
           marca: p.marca,
           coleccionIds: p.colecciones.map((x) => x.coleccionId),
         })
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
   return (

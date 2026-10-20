@@ -84,7 +84,7 @@ export default async function TiendaPublicaPage({ params }: PageProps) {
       variantes: { where: { estado: { not: "ARCHIVADA" } } },
       colecciones: { select: { coleccionId: true } },
     },
-    orderBy: { nombre: "asc" },
+    orderBy: { createdAt: "desc" },
   });
 
   const productosBusqueda = productosTienda.map((p) => {
